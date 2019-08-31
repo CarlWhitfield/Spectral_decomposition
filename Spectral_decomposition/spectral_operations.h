@@ -108,6 +108,8 @@ public:
 
 	void compute_truncated_laplacian_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
 	{
+
+		compute_spectrum<Spectra::SparseGenMatProd<double>
 		//compute Nlargest
 		const size_t mat_dim = this->count_nodes() - this->count_term_nodes() + 1;
 		Eigen::VectorXd largest_evals;

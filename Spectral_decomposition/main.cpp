@@ -1,8 +1,13 @@
 #include<list_template.h>
 #include"spectral_operations.h"
 
+#define LARGEST 0
+#define SMALLEST 1
+#define BOTH 2
+
 const size_t Nprint = 10;  //number of dominant modes to print
 const double frac = 1.0;  //fraction of modes to compute
+const int opt = LARGEST;
 //const size_t Ngens = 5;
 
 int main(int argc, char * argv[])
@@ -22,30 +27,61 @@ int main(int argc, char * argv[])
 	//SpectralNetwork<RESISTANCE_NETWORK> tree(Ngens, 1.0, 6.0, 3.0, 0.1);
 
 	std::cout << "Computing Laplacian Spectrum...\n";
-	size_t Nsmall, Nlarge;
+	size_t Nsmall = 0, Nlarge = 0;
+	size_t Nmodes = tree.count_nodes()-tree.count_term_nodes()+1;
 	if(frac==1)
 	{
-		Nlarge = size_t(0.51*(tree.count_nodes()-tree.count_term_nodes()+1));
-		Nsmall = tree.count_nodes()-tree.count_term_nodes()+1-Nlarge;
+		tree.compute_full_truncated_laplacian_spectrum();
 	}
 	else
 	{
-		Nsmall = 0;
-		Nlarge = size_t((tree.count_nodes()-tree.count_term_nodes()+1)*frac);
+		switch(opt)
+		{
+		case LARGEST:
+			{
+				Nlarge = size_t(frac*Nmodes);
+			} break;
+		case SMALLEST:
+			{
+				Nsmall = size_t(frac*Nmodes);
+			} break;
+		case BOTH:
+			{
+				Nlarge = size_t(0.5*frac*Nmodes);
+				Nsmall = Nlarge;
+			} break;
+		}
+		tree.compute_truncated_laplacian_spectrum(Nsmall, Nlarge);
 	}
-	tree.compute_truncated_laplacian_spectrum(Nsmall, Nlarge);
+	
 
 	std::cout << "Computing Maury Spectrum...\n";
+	Nmodes = tree.count_term_nodes();
 	if(frac==1)
 	{
-		Nlarge = size_t(0.51*(tree.count_term_nodes()));
-		Nsmall = tree.count_term_nodes()-Nlarge;
+		tree.compute_full_maury_spectrum();
 	}
 	else
 	{
-		Nlarge = size_t(tree.count_term_nodes()*frac);
+		switch(opt)
+		{
+		case LARGEST:
+			{
+				Nlarge = size_t(frac*Nmodes);
+			} break;
+		case SMALLEST:
+			{
+				Nsmall = size_t(frac*Nmodes);
+			} break;
+		case BOTH:
+			{
+				Nlarge = size_t(0.5*frac*Nmodes);
+				Nsmall = Nlarge;
+			} break;
+		}
+		tree.compute_maury_spectrum(Nmall,Nlarge);
 	}
-	tree.compute_maury_spectrum(Nsmall, Nlarge);
+	
 
 	std::cout << "Outputting...\n";
 	tree.print_dominant_laplacian_evectors_vtk("Laplacian_evecs", Nprint);
