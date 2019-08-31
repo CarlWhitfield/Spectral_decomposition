@@ -15,20 +15,43 @@ typedef network::Network<network::Node,network::Edge<network::Node>> Tree;
 #define RESISTANCE_NETWORK 0
 #define DIFFUSION_NETWORK 1
 
-template<class SpectraMatrixClass> void compute_spectrum(SpectraMatrixClass & op, const size_t & mat_dim,  const size_t & Nlargest,
-							                  Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+template<class SpectraMatrixClass> SpectraMatrixClass reverse_and_subtract(SpectraMatrixClass & mat, const double & l)
 {
-	//resize vectors
-	auto start = std::chrono::system_clock::now();
-	evalues = Eigen::VectorXd::Zero(Nlargest);
-	evectors.clear();
-	evectors.resize(Nlargest);
+	return mat;
+}
 
+template<> Eigen::SparseMatrix<double> reverse_and_subtract<Eigen::SparseMatrix<double>>(Eigen::SparseMatrix<double> & mat, const double & l)
+{
+		Eigen::SparseMatrix<double> Id(mat.rows(),mat.cols());
+		Id.setIdentity();
+		Eigen::SparseMatrix<double> shift = -mat + l*Id;
+		return shift;
+}
 
-	//do largest evalues
-	//repeat for largest Nlargest eigenvalues
+template<> Eigen::MatrixXd reverse_and_subtract<Eigen::MatrixXd>(Eigen::MatrixXd & mat, const double & l)
+{
+		Eigen::MatrixXd Id = Eigen::MatrixXd::Identity(mat.rows(),mat.cols());
+		Eigen::MatrixXd shift = -mat + l*Id;
+		return shift;
+}
+
+template<> Rmat<RMAT1> reverse_and_subtract<Rmat<RMAT1>>(Rmat<RMAT1> & mat, const double & l)
+{
+		Rmat<RMAT1> shift(mat, l, true);
+		return shift;
+}
+
+template<> Rmat<RMAT2> reverse_and_subtract<Rmat<RMAT2>>(Rmat<RMAT2> & mat, const double & l)
+{
+		Rmat<RMAT2> shift(mat, l, true);
+		return shift;
+}
+
+template<class SpectraMatrixClass> void do_compute_spectrum(SpectraMatrixClass & op, const int & key, const size_t Neigs,
+	                                                  const size_t & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+{
 	size_t eig_param = mat_dim;
-	Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, SpectraMatrixClass> esolver(&op, int(Nlargest), int(eig_param));
+	Spectra::SymEigsSolver<double, key, SpectraMatrixClass> esolver(&op, int(Nlargest), int(eig_param));
 
 	//compute
 	esolver.init();
@@ -44,6 +67,78 @@ template<class SpectraMatrixClass> void compute_spectrum(SpectraMatrixClass & op
 	else
 	{
 		std::cout << "Computation unsuccesful\n.";
+	}
+}
+
+template<> void do_compute_spectrum<Eigen::SparseMatrix<double>>(Eigen::SparseMatrix<double> & mat, const int & key, const size_t Neigs,
+	                                                  const size_t & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+							//if eigen matrix given, need to transform
+{
+	do_compute_spectrum<Spectra::SparseGenMatProd>(Spectra::SparseGenMatProd(mat), const int & key, const size_t Neigs,
+		                                         const size_t & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors);
+
+}
+
+template<class SpectraMatrixClass> void compute_partial_spectrum(SpectraMatrixClass & op, const size_t & mat_dim, const size_t & Nsmallest,
+	                              const size_t & Nlargest, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+{
+	//resize vectors
+	auto start = std::chrono::system_clock::now();
+	evalues = Eigen::VectorXd::Zero(Nlargest + Nsmallest);
+	evectors.clear();
+	evectors.resize(Nlargest + Nsmallest);
+
+	Eigen::VectorXd largest_evals;
+	std::vector<Eigen::VectorXd> largest_evecs;
+	if(Nlargest > 0)
+	{
+		do_compute_spectrum<SpectraMatrixClass>(op, Spectra::LARGEST_ALGE, Nlargest, mat_dim, largest_evals, largest_evecs);
+	}
+	else
+	{
+		do_compute_spectrum<SpectraMatrixClass>(op, Spectra::LARGEST_ALGE, 1, mat_dim, largest_evals, largest_evecs);
+	}
+
+	if(Nsmallest > 0)
+	{
+		//get largest eval
+		double lambda0 = largest_evals[0];
+		//get L - lambda I
+		SpectraMatrixClass shift = reverse_and_subtract<SpectraMatrixClass>(op, lambda0)
+		//create object & do calc
+		Eigen::VectorXd smallest_evals, small_evals_sorted;
+		std::vector<Eigen::VectorXd> smallest_evecs, small_evecs_sorted;
+		do_compute_spectrum<SpectraMatrixClass>(op, Spectra::LARGEST_ALGE, Nsmallest, mat_dim, smallest_evals, smallest_evecs);
+		//add lambda to all evalues
+		smallest_evals = -smallest_evals + lambda0*Eigen::VectorXd::Ones(smallest_evals.size());
+		small_evals_sorted.resize(smallest_evals.size());
+		small_evecs_sorted.resize(smallest_evals.size());
+		for(size_t i = 0; i < smallest_evals.size(); i++)
+		{
+			small_evals_sorted[smallest_evals.size()-1-i] = smallest_evals[i];
+			small_evecs_sorted[smallest_evals.size()-1-i] = smallest_evecs[i];
+		}
+	}
+
+	//concatenate
+	if(Nsmallest > 0 && Nlargest > 0)
+	{
+		evalues << largest_evals, small_evals_sorted;
+		evectors = largest_evecs;
+		evectors.insert(evectors.end(), small_evecs_sorted.begin(), small_evecs_sorted.end());
+	}
+	else
+	{
+		if(Nsmallest > 0)
+		{
+			evalues = smallest_evals;
+			evectors = smallest_evecs;
+		}
+		if(Nlargest > 0)
+		{
+			evalues = largest_evals;
+			evectors = largest_evecs;
+		}
 	}
 
 	auto end = std::chrono::system_clock::now();
@@ -72,8 +167,8 @@ private:
 
 	Eigen::SparseMatrix<double> Incidence, Degree, Adjacency, Laplacian, Truncated_Laplacian;
 	Rmat<RMAT1> Maury_matrix;
-	void build_asymmetric_network(const size_t & Ngens, const double & rad0, const double & length0, 
-			                          const double & scale_factor, const double & asymm_factor); 
+	void build_asymmetric_network(const size_t & Ngens, const double & rad0, const double & length0,
+			                          const double & scale_factor, const double & asymm_factor);
 	void fill_matrices();
 	void solve_effective_conductance_problem();
 	void fill_fluxes_from_term_vals(Eigen::VectorXd & flux, const Eigen::VectorXd & term_flux);
@@ -98,7 +193,7 @@ public:
 		this->fill_matrices();
 		this->solve_effective_conductance_problem();
 	}
-	SpectralNetwork(const size_t & Ngens, const double & rad0, const double & length0, 
+	SpectralNetwork(const size_t & Ngens, const double & rad0, const double & length0,
 			          const double & scale_factor, const double & asymm_factor)
 	{
 		this->build_asymmetric_network(Ngens, rad0, length0, scale_factor, asymm_factor);
@@ -108,79 +203,42 @@ public:
 
 	void compute_truncated_laplacian_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
 	{
-
-		compute_spectrum<Spectra::SparseGenMatProd<double>
-		//compute Nlargest
-		const size_t mat_dim = this->count_nodes() - this->count_term_nodes() + 1;
-		Eigen::VectorXd largest_evals;
-
-		compute_spectrum<Spectra::SparseGenMatProd<double>>(Spectra::SparseGenMatProd<double>(this->Truncated_Laplacian),
-			             mat_dim, Nlargest, largest_evals, this->truncated_laplacian_evectors);
-		//get largest eval
-		double lambda0 = largest_evals[0];
-		//get L - lambda I
-		Eigen::SparseMatrix<double> Id(mat_dim,mat_dim);
-		Id.setIdentity();
-		Eigen::SparseMatrix<double> lap_shift = -this->Truncated_Laplacian + lambda0*Id;
-		//create object & do calc
-		Eigen::VectorXd smallest_evals, small_evals_sorted;
-		std::vector<Eigen::VectorXd> smallest_evecs, small_evecs_sorted;
-		compute_spectrum<Spectra::SparseGenMatProd<double>>(Spectra::SparseGenMatProd<double>(lap_shift),
-			             mat_dim, Nsmallest, smallest_evals, smallest_evecs);
-		//add lambda to all evalues
-		smallest_evals = -smallest_evals + lambda0*Eigen::VectorXd::Ones(smallest_evals.size());
-		small_evals_sorted.resize(smallest_evals.size());
-		small_evecs_sorted.resize(smallest_evals.size());
-		for(size_t i = 0; i < smallest_evals.size(); i++)
-		{
-			small_evals_sorted[smallest_evals.size()-1-i] = smallest_evals[i];
-			small_evecs_sorted[smallest_evals.size()-1-i] = smallest_evecs[i];
-		}
-		//concatenate
-		this->truncated_laplacian_evalues.resize(largest_evals.size() + smallest_evals.size());
-		this->truncated_laplacian_evalues << largest_evals, small_evals_sorted;
-		this->truncated_laplacian_evectors.insert(this->truncated_laplacian_evectors.end(), small_evecs_sorted.begin(), small_evecs_sorted.end());
-		
+		compute_spectrum<Eigen::SparseMatrix<double>>>(this->Truncated_Laplacian, mat_dim, Nsmallest, Nlargest,
+								                     this->truncated_laplacian_evalues, this->truncated_laplacian_evectors);
 		this->calc_laplacian_reffs();
 	}
 	void compute_maury_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
 	{
-				//compute Nlargest
-		const size_t mat_dim = this->count_term_nodes();
-		Eigen::VectorXd largest_evals;
+		compute_spectrum<Rmat<RMAT1>>(this->Maury_matrix, mat_dim, Nmallest, Nlargest,
+			                              this->maury_evalues, this->maury_evectors);
+		//do ceff calc
+		this->calc_maury_ceffs();
+	}
 
-		compute_spectrum<Rmat<RMAT1>>(this->Maury_matrix, mat_dim, Nlargest, largest_evals, this->maury_evectors);
-		//get largest eval
-		double lambda0 = largest_evals[0];
-		//get L - lambda I
-		Eigen::SparseMatrix<double> Id(mat_dim,mat_dim);
-		Id.setIdentity();
-		Rmat<RMAT1> maury_shift(this->Maury_matrix, lambda0, true);
-		//create object & do calc
-		Eigen::VectorXd smallest_evals, small_evals_sorted;
-		std::vector<Eigen::VectorXd> smallest_evecs, small_evecs_sorted;
-		compute_spectrum<Rmat<RMAT1>>(maury_shift, mat_dim, Nsmallest, smallest_evals, smallest_evecs);
-		//add lambda to all evalues
-		smallest_evals = -smallest_evals + lambda0*Eigen::VectorXd::Ones(smallest_evals.size());
-		small_evals_sorted.resize(smallest_evals.size());
-		small_evecs_sorted.resize(smallest_evals.size());
-		for(size_t i = 0; i < smallest_evals.size(); i++)
-		{
-			small_evals_sorted[smallest_evals.size()-1-i] = smallest_evals[i];
-			small_evecs_sorted[smallest_evals.size()-1-i] = smallest_evecs[i]; 
-		}
-		//concatenate
-		this->maury_evalues.resize(largest_evals.size() + smallest_evals.size());
-		this->maury_evalues << largest_evals, small_evals_sorted;
-		this->maury_evectors.insert(this->maury_evectors.end(), small_evecs_sorted.begin(), small_evecs_sorted.end());
+	void compute_full_truncated_laplacian_spectrum()
+	{
+		compute_full_spectrum<Eigen::SparseMatrix<double>>>(this->Truncated_Laplacian, mat_dim,
+			                 this->truncated_laplacian_evalues,  this->truncated_laplacian_evectors);
+		this->calc_laplacian_reffs();
+	}
+	void compute_full_maury_spectrum()
+	{
+		compute_full_spectrum<Rmat<RMAT1>>(this->Maury_matrix, mat_dim,
+																		        this->maury_evalues, this->maury_evectors);
 		//do ceff calc
 		this->calc_maury_ceffs();
 	}
 	void compute_adjacency_specturm(const size_t & Nsmallest, const size_t & Nlargest)
 	{
-		compute_spectrum<Spectra::SparseGenMatProd<double>>(Spectra::SparseGenMatProd<double>(this->Adjacency), 
-			                         this->count_nodes(), Nsmallest, Nlargest, this->adjacency_evalues, this->adjacencey_evectors);
+		compute_spectrum<Eigen::SparseMatrix<double>>(this->Adjacency, this->count_nodes(),
+		            Nsmallest, Nlargest, this->adjacency_evalues, this->adjacencey_evectors);
 	}
+	void compute_full_specturm()
+	{
+		compute_full_spectrum<Eigen::SparseMatrix<double>>(this->Adjacency, this->count_nodes(),
+		                            this->adjacency_evalues, this->adjacencey_evectors);
+	}
+
 	void print_dominant_laplacian_evectors_vtk(const std::string & filename, const size_t & Nvecs)
 	{
 		//copy truncated eigenvectors to full network
@@ -192,8 +250,8 @@ public:
 			//all internal nodes remain the same
 			node_evecs[n].head(this->truncated_laplacian_evectors[n].size()) = this->truncated_laplacian_evectors[n];
 			//all term nodes have same value
-			node_evecs[n].tail(this->count_nodes()-this->truncated_laplacian_evectors[n].size()) 
-				= this->truncated_laplacian_evectors[n][this->truncated_laplacian_evectors[n].size()-1] 
+			node_evecs[n].tail(this->count_nodes()-this->truncated_laplacian_evectors[n].size())
+				= this->truncated_laplacian_evectors[n][this->truncated_laplacian_evectors[n].size()-1]
 			    * Eigen::VectorXd::Ones(this->count_nodes()-this->truncated_laplacian_evectors[n].size());
 		}
 		//print
@@ -217,7 +275,7 @@ public:
 	void print_maury_modes_csv(const std::string & filename);
 };
 
-template<int TYPE> void SpectralNetwork<TYPE>::build_asymmetric_network(const size_t & Ngens, const double & rad0, const double & length0, 
+template<int TYPE> void SpectralNetwork<TYPE>::build_asymmetric_network(const size_t & Ngens, const double & rad0, const double & length0,
 			                          const double & scale_factor, const double & asymm_factor)
 {
 	std::vector<network::Node*> nodes;
@@ -286,7 +344,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_matrices()
 	this->edge_weight = Eigen::VectorXd::Zero(this->count_edges());
 	for(size_t j = 0; j < this->count_edges(); j++)
 	{
-		this->edge_weight[j] = edge_weight_calc<TYPE>(this->get_edge(j)->get_geom()->get_inner_radius(), 
+		this->edge_weight[j] = edge_weight_calc<TYPE>(this->get_edge(j)->get_geom()->get_inner_radius(),
 				this->get_edge(j)->get_geom()->get_length(), this->get_edge(j)->branch_count());
 	}
 	//initialise various matrices
@@ -333,7 +391,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_matrices()
 	this->Degree.setFromTriplets(degree_fill.begin(),degree_fill.end());
 	this->Incidence.setFromTriplets(incidence_fill.begin(),incidence_fill.end());
 	this->Laplacian = this->Degree - this->Adjacency;
-	
+
 	//create tuncated laplacian where all terminal nodes are identified into a single node
 	//              |            |   |
 	//              |      A     | B |
@@ -483,7 +541,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_fluxes_from_term_vals(Eigen:
 			}
 		}
 	}
-	
+
 }
 
 template<int TYPE> void SpectralNetwork<TYPE>::calc_laplacian_reffs()
@@ -503,9 +561,9 @@ template<int TYPE> void SpectralNetwork<TYPE>::calc_laplacian_reffs()
 		Eigen::VectorXd evect_full = Eigen::VectorXd::Zero(this->count_nodes());
 		evect_full.head(TLsize+1) = this->truncated_laplacian_evectors[n];
 		evect_full.tail(this->count_nodes()-TLsize) =  this->truncated_laplacian_evectors[n][TLsize]*Eigen::VectorXd::Ones(this->count_nodes()-TLsize);
-		this->laplacian_pressure = this->laplacian_pressure + Q*(this->truncated_laplacian_evectors[n][0] 
+		this->laplacian_pressure = this->laplacian_pressure + Q*(this->truncated_laplacian_evectors[n][0]
 		                         - this->truncated_laplacian_evectors[n][TLsize])*evect_full/this->truncated_laplacian_evalues[n];
-			                       
+
 	}
 	this->laplacian_pressure = this->laplacian_pressure - this->laplacian_pressure[this->count_nodes()-1]*Eigen::VectorXd::Ones(this->count_nodes());   //offset
 	this->laplacian_flux = Eigen::VectorXd::Zero(this->count_edges());
@@ -560,7 +618,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::print_dominant_vectors_vtk(const 
 		std::stringstream name;
 		name << "Dominant_mode_" << n << "_eigenvalue_" << evalues[indices[n]];
 
-		extra_vals[name.str()] = std::vector<double>(evectors[indices[n]].data(), evectors[indices[n]].data() + evectors[indices[n]].size());		
+		extra_vals[name.str()] = std::vector<double>(evectors[indices[n]].data(), evectors[indices[n]].data() + evectors[indices[n]].size());
 	}
 	this->print_vtk(filename, 1.0, extra_vals);
 }
