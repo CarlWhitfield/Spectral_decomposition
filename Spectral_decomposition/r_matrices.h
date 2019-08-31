@@ -11,9 +11,17 @@ private:
 	Eigen::SparseMatrix<double> T, T_transpose;
 	Eigen::SparseMatrix<double> diag_r;
 	size_t Ntermnodes, Nedges;
+	double diag_sup;
+	bool flipped;
 public:
 	Rmat(){};
 	Rmat(network::Network<network::Node,network::Edge<network::Node>> *tree, const Eigen::VectorXd & conductance);
+	Rmat(const Rmat<OPT> & r, const double & diag, const bool & flip = false)
+	{
+		*(this) = r;
+		this->diag_sup = diag;
+		this->flipped = flip;
+	}
 	inline int rows() { return int(this->Ntermnodes); }
     inline int cols() { return int(this->Ntermnodes); }
 	void perform_op(double *x_in, double *y_out);
@@ -89,6 +97,8 @@ template<> Rmat<RMAT1>::Rmat(network::Network<network::Node,network::Edge<networ
 	this->diag_r.setFromTriplets(diag_r_fill.begin(), diag_r_fill.end());
 	this->T_transpose.makeCompressed();
 	this->T = T_transpose.transpose();
+	this->diag_sup = 0;
+	this->flipped = false;
 }
 
 template<> Rmat<RMAT2>::Rmat(network::Network<network::Node,network::Edge<network::Node>> *tree_in, const Eigen::VectorXd & conductance_weight)
@@ -102,7 +112,11 @@ template<> Rmat<RMAT2>::Rmat(network::Network<network::Node,network::Edge<networ
 	{
 		this->diag_r.insert(j,j) = 1.0/conductance_weight[j];
 	}
+	this->diag_sup = 0;
+	this->flipped = false;
 }
+
+
 
 template<> void Rmat<RMAT1>::perform_op(double *x_in, double *y_out)
 {
@@ -120,7 +134,8 @@ template<> void Rmat<RMAT1>::perform_op(double *x_in, double *y_out)
 	Eigen::VectorXd u = this->T_transpose * x;
 	for(size_t k = 0; k < this->Ntermnodes; k++)
 	{
-		y_out[k] = u[k];
+		if(this->flipped) y_out[k] = -u[k] + diag_sup*v[k];
+		else y_out[k] = u[k] + diag_sup*v[k];
 	}
 }
 
@@ -183,6 +198,7 @@ template<> void Rmat<RMAT2>::perform_op(double *x_in, double *y_out)
 	{
 		size_t k_term = k - this->tree->get_first_term_index();
 		size_t j = this->tree->get_edge_in_index(k,0);
-		y_out[k_term] = ue[j];
+		if(this->flipped) y_out[k_term] = -ue[j]  + diag_sup*v[k_term];
+		else y_out[k_term] = ue[j]  + diag_sup*v[k_term];
 	}
 }

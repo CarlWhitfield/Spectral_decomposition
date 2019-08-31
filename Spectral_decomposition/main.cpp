@@ -1,7 +1,7 @@
 #include<list_template.h>
 #include"spectral_operations.h"
 
-const size_t Nprint = 50;  //number of dominant modes to print
+const size_t Nprint = 10;  //number of dominant modes to print
 const double frac = 1.0;  //fraction of modes to compute
 //const size_t Ngens = 5;
 
@@ -25,8 +25,8 @@ int main(int argc, char * argv[])
 	size_t Nsmall, Nlarge;
 	if(frac==1)
 	{
-		Nsmall = size_t(0.05*(tree.count_nodes()-tree.count_term_nodes()));
-		Nlarge = size_t(0.95*(tree.count_nodes()-tree.count_term_nodes()));
+		Nlarge = size_t(0.51*(tree.count_nodes()-tree.count_term_nodes()+1));
+		Nsmall = tree.count_nodes()-tree.count_term_nodes()+1-Nlarge;
 	}
 	else
 	{
@@ -38,8 +38,8 @@ int main(int argc, char * argv[])
 	std::cout << "Computing Maury Spectrum...\n";
 	if(frac==1)
 	{
-		Nsmall = size_t(0.05*(tree.count_term_nodes()-1));
-		Nlarge = size_t(0.95*(tree.count_term_nodes()-1));
+		Nlarge = size_t(0.51*(tree.count_term_nodes()));
+		Nsmall = tree.count_term_nodes()-Nlarge;
 	}
 	else
 	{

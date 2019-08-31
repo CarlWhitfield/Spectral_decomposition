@@ -15,110 +15,37 @@ typedef network::Network<network::Node,network::Edge<network::Node>> Tree;
 #define RESISTANCE_NETWORK 0
 #define DIFFUSION_NETWORK 1
 
-template<class SpectraMatrixClass> void compute_spectrum(SpectraMatrixClass & op, const size_t & mat_dim, const size_t & Nsmallest, const size_t & Nlargest,
+template<class SpectraMatrixClass> void compute_spectrum(SpectraMatrixClass & op, const size_t & mat_dim,  const size_t & Nlargest,
 							                  Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
 {
 	//resize vectors
 	auto start = std::chrono::system_clock::now();
-	evalues = Eigen::VectorXd::Zero(Nsmallest + Nlargest);
+	evalues = Eigen::VectorXd::Zero(Nlargest);
 	evectors.clear();
-	evectors.resize(Nsmallest + Nlargest);
-	
-	//do smallest e-values
-	if(Nsmallest > 0)
-	{
-		//setup spectra to solve for smallest Nsmallest eigenvalues
-		size_t eig_param = mat_dim;
-		Spectra::SymEigsSolver<double, Spectra::SMALLEST_ALGE, SpectraMatrixClass> esolver1(&op, Nsmallest, eig_param);
+	evectors.resize(Nlargest);
 
-		//compute
-		esolver1.init();
-		int nconv1 = esolver1.compute();
-		Eigen::VectorXd evals_smallest = esolver1.eigenvalues();
-		Eigen::MatrixXd evecs_smallest = esolver1.eigenvectors();
-
-		//recompute if failed
-		int attempts = 0;
-		while(esolver1.info() != Spectra::SUCCESSFUL && attempts < 1000 && eig_param > Nsmallest)
-		{
-			eig_param--;
-			Spectra::SymEigsSolver<double, Spectra::SMALLEST_ALGE, SpectraMatrixClass> esolver(&op, int(Nsmallest), int(eig_param));
-
-			//compute
-			esolver.init();
-			int nconv = esolver.compute();
-			evals_smallest = esolver.eigenvalues();
-			evecs_smallest = esolver.eigenvectors();
-			attempts++;
-		}
-		std::cout << "Smallest eigs required " << attempts << " extra attempts.\n";
-
-		//assign eigen values and vectors
-		if(esolver1.info() == Spectra::SUCCESSFUL)
-		{
-			evalues.head(Nsmallest) = evals_smallest;
-			for(size_t k = 0; k < Nsmallest; k++)
-			{
-				evectors[k] = evecs_smallest.block(0, k, mat_dim, 1);
-			}
-		}
-		else
-		{
-			std::cout << "Spectra_failed with code: " << esolver1.info() << '\n';
-			for(size_t k = 0; k < Nsmallest; k++)
-			{
-				evectors[k] = Eigen::VectorXd::Zero(mat_dim);
-			}
-		}
-	}
 
 	//do largest evalues
-	if(Nlargest > 0)
+	//repeat for largest Nlargest eigenvalues
+	size_t eig_param = mat_dim;
+	Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, SpectraMatrixClass> esolver(&op, int(Nlargest), int(eig_param));
+
+	//compute
+	esolver.init();
+	int nconv1 = esolver.compute();
+	if(esolver.info() == Spectra::SUCCESSFUL)
 	{
-		//repeat for largest Nlargest eigenvalues
-		size_t eig_param = std::min(2*Nlargest, mat_dim);
-		Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, SpectraMatrixClass> esolver2(&op, int(Nlargest), int(eig_param));
-
-		//compute
-		esolver2.init();
-		int nconv1 = esolver2.compute();
-		Eigen::VectorXd evals_largest = esolver2.eigenvalues();
-		Eigen::MatrixXd evecs_largest = esolver2.eigenvectors();
-
-		//recompute if failed
-		int attempts = 0;
-		while(esolver2.info() != Spectra::SUCCESSFUL && attempts < 1000 && eig_param < mat_dim)
+		evalues = esolver.eigenvalues();
+		for(size_t k = 0; k < Nlargest; k++)
 		{
-			eig_param++;
-			Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, SpectraMatrixClass> esolver(&op, int(Nlargest), int(eig_param));
-
-			//compute
-			esolver.init();
-			int nconv = esolver.compute();
-			evals_largest = esolver.eigenvalues();
-			evecs_largest = esolver.eigenvectors();
-			attempts++;
-		}
-		std::cout << "Largest eigs required " << attempts << " extra attempts.\n";
-
-		//assign eigen values and vectors
-		if(esolver2.info() == Spectra::SUCCESSFUL)
-		{
-			for(size_t k = 0; k < Nlargest; k++)
-			{
-				evalues[Nsmallest + Nlargest - k - 1] =  evals_largest[k];
-				evectors[Nsmallest + Nlargest - k - 1] = evecs_largest.block(0, k, mat_dim, 1);
-			}
-		}
-		else
-		{
-			std::cout << "Spectra_failed with code: " << esolver2.info() << '\n';
-			for(size_t k = 0; k < Nlargest; k++)
-			{
-				evectors[Nsmallest + Nlargest - k - 1] = Eigen::VectorXd::Zero(mat_dim);
-			}
+			evectors[k] = esolver.eigenvectors().block(0, k, mat_dim, 1);
 		}
 	}
+	else
+	{
+		std::cout << "Computation unsuccesful\n.";
+	}
+
 	auto end = std::chrono::system_clock::now();
 	std::cout << "Spectral computation took " << (std::chrono::duration<double>(end-start)).count() << '\n';
 }
@@ -181,13 +108,70 @@ public:
 
 	void compute_truncated_laplacian_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
 	{
+		//compute Nlargest
+		const size_t mat_dim = this->count_nodes() - this->count_term_nodes() + 1;
+		Eigen::VectorXd largest_evals;
+
 		compute_spectrum<Spectra::SparseGenMatProd<double>>(Spectra::SparseGenMatProd<double>(this->Truncated_Laplacian),
-			             this->count_nodes() - this->count_term_nodes() + 1, Nsmallest, Nlargest, this->truncated_laplacian_evalues, this->truncated_laplacian_evectors);
+			             mat_dim, Nlargest, largest_evals, this->truncated_laplacian_evectors);
+		//get largest eval
+		double lambda0 = largest_evals[0];
+		//get L - lambda I
+		Eigen::SparseMatrix<double> Id(mat_dim,mat_dim);
+		Id.setIdentity();
+		Eigen::SparseMatrix<double> lap_shift = -this->Truncated_Laplacian + lambda0*Id;
+		//create object & do calc
+		Eigen::VectorXd smallest_evals, small_evals_sorted;
+		std::vector<Eigen::VectorXd> smallest_evecs, small_evecs_sorted;
+		compute_spectrum<Spectra::SparseGenMatProd<double>>(Spectra::SparseGenMatProd<double>(lap_shift),
+			             mat_dim, Nsmallest, smallest_evals, smallest_evecs);
+		//add lambda to all evalues
+		smallest_evals = -smallest_evals + lambda0*Eigen::VectorXd::Ones(smallest_evals.size());
+		small_evals_sorted.resize(smallest_evals.size());
+		small_evecs_sorted.resize(smallest_evals.size());
+		for(size_t i = 0; i < smallest_evals.size(); i++)
+		{
+			small_evals_sorted[smallest_evals.size()-1-i] = smallest_evals[i];
+			small_evecs_sorted[smallest_evals.size()-1-i] = smallest_evecs[i];
+		}
+		//concatenate
+		this->truncated_laplacian_evalues.resize(largest_evals.size() + smallest_evals.size());
+		this->truncated_laplacian_evalues << largest_evals, small_evals_sorted;
+		this->truncated_laplacian_evectors.insert(this->truncated_laplacian_evectors.end(), small_evecs_sorted.begin(), small_evecs_sorted.end());
+		
 		this->calc_laplacian_reffs();
 	}
 	void compute_maury_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
 	{
-		compute_spectrum<Rmat<RMAT1>>(this->Maury_matrix, this->count_term_nodes(), Nsmallest, Nlargest, this->maury_evalues, this->maury_evectors);
+				//compute Nlargest
+		const size_t mat_dim = this->count_term_nodes();
+		Eigen::VectorXd largest_evals;
+
+		compute_spectrum<Rmat<RMAT1>>(this->Maury_matrix, mat_dim, Nlargest, largest_evals, this->maury_evectors);
+		//get largest eval
+		double lambda0 = largest_evals[0];
+		//get L - lambda I
+		Eigen::SparseMatrix<double> Id(mat_dim,mat_dim);
+		Id.setIdentity();
+		Rmat<RMAT1> maury_shift(this->Maury_matrix, lambda0, true);
+		//create object & do calc
+		Eigen::VectorXd smallest_evals, small_evals_sorted;
+		std::vector<Eigen::VectorXd> smallest_evecs, small_evecs_sorted;
+		compute_spectrum<Rmat<RMAT1>>(maury_shift, mat_dim, Nsmallest, smallest_evals, smallest_evecs);
+		//add lambda to all evalues
+		smallest_evals = -smallest_evals + lambda0*Eigen::VectorXd::Ones(smallest_evals.size());
+		small_evals_sorted.resize(smallest_evals.size());
+		small_evecs_sorted.resize(smallest_evals.size());
+		for(size_t i = 0; i < smallest_evals.size(); i++)
+		{
+			small_evals_sorted[smallest_evals.size()-1-i] = smallest_evals[i];
+			small_evecs_sorted[smallest_evals.size()-1-i] = smallest_evecs[i]; 
+		}
+		//concatenate
+		this->maury_evalues.resize(largest_evals.size() + smallest_evals.size());
+		this->maury_evalues << largest_evals, small_evals_sorted;
+		this->maury_evectors.insert(this->maury_evectors.end(), small_evecs_sorted.begin(), small_evecs_sorted.end());
+		//do ceff calc
 		this->calc_maury_ceffs();
 	}
 	void compute_adjacency_specturm(const size_t & Nsmallest, const size_t & Nlargest)
