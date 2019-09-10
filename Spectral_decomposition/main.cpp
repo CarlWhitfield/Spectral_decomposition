@@ -8,7 +8,7 @@
 const size_t Nprint = 10;  //number of dominant modes to print
 const double frac = 1.0;  //fraction of modes to compute
 const int opt = LARGEST;
-//const size_t Ngens = 5;
+const size_t Ngens = 4;
 
 int main(int argc, char * argv[])
 {
@@ -24,11 +24,11 @@ int main(int argc, char * argv[])
 	SpectralNetwork<RESISTANCE_NETWORK> tree(options->get_filename(NODE_FILE_EXT), 
 		   options->get_filename(BRANCH_FILE_EXT), options->get_filename(TERM_NODE_FILE_EXT));
 	
-	//SpectralNetwork<RESISTANCE_NETWORK> tree(Ngens, 1.0, 6.0, 3.0, 0.1);
+	/*SpectralNetwork<RESISTANCE_NETWORK> tree(Ngens, 1.0, 6.0, 3.0, 0.0);*/
 
 	std::cout << "Computing Laplacian Spectrum...\n";
-	size_t Nsmall = 0, Nlarge = 0;
-	size_t Nmodes = tree.count_nodes()-tree.count_term_nodes()+1;
+	int Nsmall = 0, Nlarge = 0;
+	int Nmodes = int(tree.count_nodes()-tree.count_term_nodes()+1);
 	if(frac==1)
 	{
 		tree.compute_full_truncated_laplacian_spectrum();
@@ -39,15 +39,15 @@ int main(int argc, char * argv[])
 		{
 		case LARGEST:
 			{
-				Nlarge = size_t(frac*Nmodes);
+				Nlarge = int(frac*Nmodes);
 			} break;
 		case SMALLEST:
 			{
-				Nsmall = size_t(frac*Nmodes);
+				Nsmall = int(frac*Nmodes);
 			} break;
 		case BOTH:
 			{
-				Nlarge = size_t(0.5*frac*Nmodes);
+				Nlarge = int(0.5*frac*Nmodes);
 				Nsmall = Nlarge;
 			} break;
 		}
@@ -56,7 +56,7 @@ int main(int argc, char * argv[])
 	
 
 	std::cout << "Computing Maury Spectrum...\n";
-	Nmodes = tree.count_term_nodes();
+	Nmodes = int(tree.count_term_nodes());
 	if(frac==1)
 	{
 		tree.compute_full_maury_spectrum();
@@ -67,19 +67,19 @@ int main(int argc, char * argv[])
 		{
 		case LARGEST:
 			{
-				Nlarge = size_t(frac*Nmodes);
+				Nlarge = int(frac*Nmodes);
 			} break;
 		case SMALLEST:
 			{
-				Nsmall = size_t(frac*Nmodes);
+				Nsmall = int(frac*Nmodes);
 			} break;
 		case BOTH:
 			{
-				Nlarge = size_t(0.5*frac*Nmodes);
+				Nlarge = int(0.5*frac*Nmodes);
 				Nsmall = Nlarge;
 			} break;
 		}
-		tree.compute_maury_spectrum(Nmall,Nlarge);
+		tree.compute_maury_spectrum(Nsmall, Nlarge);
 	}
 	
 

@@ -3,8 +3,11 @@
 #include<Eigen\Dense>
 #include<Eigen\Sparse>
 #include<SymEigsSolver.h>
+#include <SymEigsShiftSolver.h>
 #include<GenEigsSolver.h>
 #include<MatOp\SparseGenMatProd.h>
+#include<MatOp\SparseSymMatProd.h>
+#include<MatOp\SparseSymShiftSolve.h>
 #include<algorithm>
 #include<numeric>
 #include<chrono>
@@ -14,118 +17,216 @@ typedef network::Network<network::Node,network::Edge<network::Node>> Tree;
 //choices for network TYPE
 #define RESISTANCE_NETWORK 0
 #define DIFFUSION_NETWORK 1
+#define VISCOSITY 1.93E-07  //cmH20s
+#define DIFFUSIVITY 1
 
-template<class SpectraMatrixClass> SpectraMatrixClass reverse_and_subtract(SpectraMatrixClass & mat, const double & l)
+template<class SpectraSolver, class SpectraOp> int do_solve(SpectraOp * op, const int & Neigs, const int & eig_param,
+							     const int & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
 {
-	return mat;
-}
-
-template<> Eigen::SparseMatrix<double> reverse_and_subtract<Eigen::SparseMatrix<double>>(Eigen::SparseMatrix<double> & mat, const double & l)
-{
-		Eigen::SparseMatrix<double> Id(mat.rows(),mat.cols());
-		Id.setIdentity();
-		Eigen::SparseMatrix<double> shift = -mat + l*Id;
-		return shift;
-}
-
-template<> Eigen::MatrixXd reverse_and_subtract<Eigen::MatrixXd>(Eigen::MatrixXd & mat, const double & l)
-{
-		Eigen::MatrixXd Id = Eigen::MatrixXd::Identity(mat.rows(),mat.cols());
-		Eigen::MatrixXd shift = -mat + l*Id;
-		return shift;
-}
-
-template<> Rmat<RMAT1> reverse_and_subtract<Rmat<RMAT1>>(Rmat<RMAT1> & mat, const double & l)
-{
-		Rmat<RMAT1> shift(mat, l, true);
-		return shift;
-}
-
-template<> Rmat<RMAT2> reverse_and_subtract<Rmat<RMAT2>>(Rmat<RMAT2> & mat, const double & l)
-{
-		Rmat<RMAT2> shift(mat, l, true);
-		return shift;
-}
-
-template<class SpectraMatrixClass> void do_compute_spectrum(SpectraMatrixClass & op, const int & key, const size_t Neigs,
-	                                                  const size_t & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
-{
-	size_t eig_param = mat_dim;
-	Spectra::SymEigsSolver<double, key, SpectraMatrixClass> esolver(&op, int(Nlargest), int(eig_param));
-
-	//compute
-	esolver.init();
-	int nconv1 = esolver.compute();
-	if(esolver.info() == Spectra::SUCCESSFUL)
+	int ncv = eig_param;
+	bool repeat = true;
+	while(repeat && eig_param <= mat_dim)
 	{
-		evalues = esolver.eigenvalues();
-		for(size_t k = 0; k < Nlargest; k++)
+		SpectraSolver solver(op, Neigs, ncv);
+		solver.init();
+		solver.compute();
+		if(solver.info() == Spectra::SUCCESSFUL)
 		{
-			evectors[k] = esolver.eigenvectors().block(0, k, mat_dim, 1);
+			repeat = false;
+			get_evals_and_evecs<SpectraSolver>(&solver, mat_dim, evalues, evectors);
+			return 0;
+		}
+		else
+		{
+			ncv = std::min(2*ncv, mat_dim);
+			std::cout << "Computation failed, repeating...\n";
 		}
 	}
-	else
+	return 1;
+}
+
+template<class SpectraSolver, class SpectraOp> int do_shift_solve(SpectraOp * op, const int & Neigs, const int & eig_param,
+					const int & mat_dim, const double &s, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+{
+	int ncv = eig_param;
+	bool repeat = true;
+	while(repeat && eig_param <= mat_dim)
 	{
-		std::cout << "Computation unsuccesful\n.";
+		SpectraSolver solver(op, Neigs, ncv, s);
+		solver.init();
+		solver.compute();
+		if(solver.info() == Spectra::SUCCESSFUL)
+		{
+			repeat = false;
+			get_evals_and_evecs<SpectraSolver>(&solver, mat_dim, evalues, evectors);
+			return 0;
+		}
+		else
+		{
+			ncv = std::min(2*ncv, mat_dim);
+			std::cout << "Computation failed, repeating...\n";
+		}
+	}
+	return 1;
+}
+
+template<class SpectraSolver> void get_evals_and_evecs(SpectraSolver * solver, const int & mat_dim, Eigen::VectorXd & evalues, 
+													                                   std::vector<Eigen::VectorXd> & evectors)
+{
+	evalues = solver->eigenvalues();
+	evectors.resize(evalues.size());
+	for(int k = 0; k < evalues.size(); k++)
+	{
+		evectors[k] = solver->eigenvectors().block(0, k, mat_dim, 1);
 	}
 }
 
-template<> void do_compute_spectrum<Eigen::SparseMatrix<double>>(Eigen::SparseMatrix<double> & mat, const int & key, const size_t Neigs,
-	                                                  const size_t & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
-							//if eigen matrix given, need to transform
+template<class SpectraMatrixClass, class SpectraShiftSolveClass> class SymmSolver    //class when SpectraMatrix class is a r matric
 {
-	do_compute_spectrum<Spectra::SparseGenMatProd>(Spectra::SparseGenMatProd(mat), const int & key, const size_t Neigs,
-		                                         const size_t & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors);
+private:
+	SpectraMatrixClass matrix, fs_mat;
+	SpectraShiftSolveClass *fs_solve;
+	void sort_and_return(Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+	{
+		std::vector<int> indices(evalues.size());
+		std::iota(indices.begin(), indices.end(), 0);
 
+		// sort indexes based on comparing values in evalues (descending)
+		std::sort(indices.begin(), indices.end(),  [&evalues](int i1, int i2) {return evalues[i1] > evalues[i2];});
+		Eigen::VectorXd eval_copy = evalues;
+		std::vector<Eigen::VectorXd> evec_copy = evectors;
+		for(size_t i = 0; i < indices.size(); i++)
+		{
+			evalues[i] = eval_copy[indices[i]];
+			evectors[i] = evec_copy[indices[i]];
+		}
+	}
+public:
+	SymmSolver(const SpectraMatrixClass & mat)
+	{
+		this->matrix = mat;
+		Eigen::VectorXd conductances = Eigen::VectorXd::Ones(this->matrix.return_rvec().size()).array() 
+			                         / this->matrix.return_rvec().array();
+		this->fs_mat =  SpectraMatrixClass(this->matrix.return_tree_pointer(), -conductances);
+		this->fs_solve = new SpectraShiftSolveClass(this->matrix.return_tree_pointer(), -conductances);
+	}
+
+	int calc_largest_evalues(const int & Neigs, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+	{
+		int eig_param = std::min(2*Neigs, this->matrix.rows());
+		int flag = do_solve<Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, SpectraMatrixClass>, SpectraMatrixClass>
+			          (&this->matrix, Neigs, eig_param, int(this->matrix.rows()), evalues, evectors);
+		this->sort_and_return(evalues, evectors);
+		return flag;
+	}
+
+	int flip_and_shift_and_calc_largest_evalues(const int & Neigs, Eigen::VectorXd & evalues, 
+		                                            std::vector<Eigen::VectorXd> & evectors, const double & s)
+	{
+		int eig_param = std::min(5*Neigs, this->matrix.rows());
+		this->fs_mat.set_shift(s);
+		int flag = do_solve<Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, SpectraMatrixClass>, SpectraMatrixClass>
+			               (&this->fs_mat, Neigs, eig_param, int(this->matrix.rows()), evalues, evectors);
+		//return evalues of matrix
+		evalues += s*Eigen::VectorXd::Ones(Neigs);
+		evalues = -evalues;
+		this->sort_and_return(evalues, evectors);
+		return flag;
+	}
+
+	int flip_shift_solve_largest_evalues(const int & Neigs, Eigen::VectorXd & evalues, 
+		                                   std::vector<Eigen::VectorXd> & evectors, const double & s)
+	{
+		int eig_param = std::min(5*Neigs, this->matrix.rows());
+		int flag = do_shift_solve<Spectra::SymEigsShiftSolver<double, Spectra::LARGEST_ALGE, SpectraShiftSolveClass>, 
+			SpectraShiftSolveClass>(this->fs_solve, Neigs, eig_param, int(this->matrix.rows()), s, evalues, evectors);
+		//flip back
+		evalues = -evalues;
+		this->sort_and_return(evalues, evectors);
+		return flag;
+	}
+};
+
+//specialisation for Sparse case
+template<> SymmSolver<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>>::SymmSolver
+	(const Eigen::SparseMatrix<double> & mat)
+{
+	this->matrix = mat;
+	this->fs_mat = -mat;
+	this->fs_solve = new Spectra::SparseSymShiftSolve<double>(this->fs_mat);
 }
 
-template<class SpectraMatrixClass> void compute_partial_spectrum(SpectraMatrixClass & op, const size_t & mat_dim, const size_t & Nsmallest,
-	                              const size_t & Nlargest, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+template<> int SymmSolver<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>>::calc_largest_evalues
+	                          (const int & Neigs, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
 {
-	//resize vectors
-	auto start = std::chrono::system_clock::now();
-	evalues = Eigen::VectorXd::Zero(Nlargest + Nsmallest);
-	evectors.clear();
-	evectors.resize(Nlargest + Nsmallest);
+	int eig_param = std::min(2*Neigs, int(this->matrix.rows()));
+	Spectra::SparseSymMatProd<double> prod_op(this->matrix);
+	int flag = do_solve<Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, Spectra::SparseSymMatProd<double>>, 
+		          Spectra::SparseSymMatProd<double>>(&prod_op, Neigs, eig_param, int(this->matrix.rows()), evalues, evectors);
+	this->sort_and_return(evalues, evectors);
+	return flag;
+}
 
+template<> int SymmSolver<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>>::flip_and_shift_and_calc_largest_evalues
+	                  (const int & Neigs, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors, const double & s)
+{
+	int eig_param = std::min(5*Neigs, int(this->matrix.rows()));
+	Eigen::SparseMatrix<double> id(this->matrix.rows(), this->matrix.cols());
+	id.setIdentity();
+	Eigen::SparseMatrix<double> shifted_mat = this->fs_mat - s*id;
+	Spectra::SparseSymMatProd<double> prod_op(shifted_mat);
+	int flag = do_solve<Spectra::SymEigsSolver<double, Spectra::LARGEST_ALGE, Spectra::SparseSymMatProd<double>>, 
+		         Spectra::SparseSymMatProd<double>>(&prod_op, Neigs, eig_param, int(this->matrix.rows()), evalues, evectors);
+	//return evalues of matrix
+	evalues += s*Eigen::VectorXd::Ones(Neigs);
+	evalues = -evalues;
+	this->sort_and_return(evalues, evectors);
+	return flag;
+}
+
+template<> int SymmSolver<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>>::flip_shift_solve_largest_evalues
+	                (const int & Neigs, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors, const double & s)
+{
+	int eig_param = std::min(5*Neigs, int(this->matrix.rows()));
+	bool repeat = true;
+	this->fs_solve->set_shift(s);
+	int flag = do_shift_solve<Spectra::SymEigsShiftSolver<double, Spectra::LARGEST_ALGE, Spectra::SparseSymShiftSolve<double>>, 
+		           Spectra::SparseSymShiftSolve<double>>(this->fs_solve, Neigs, eig_param, int(this->matrix.rows()), s, evalues, evectors);
+	//flip back
+	evalues = -evalues;
+	this->sort_and_return(evalues, evectors);
+	return flag;
+}
+
+template<class SpectraMatrixClass, class SpectraShiftSolveClass> void compute_partial_spectrum(SpectraMatrixClass & op, const size_t & mat_dim, const int & Nsmallest,
+	                              const int & Nlargest, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+{
 	Eigen::VectorXd largest_evals;
 	std::vector<Eigen::VectorXd> largest_evecs;
-	if(Nlargest > 0)
+	int Neigs = Nlargest;
+	evalues.resize(Nsmallest + Nlargest);
+	if(Nlargest == 0)
 	{
-		do_compute_spectrum<SpectraMatrixClass>(op, Spectra::LARGEST_ALGE, Nlargest, mat_dim, largest_evals, largest_evecs);
+		Neigs = 1;
 	}
-	else
-	{
-		do_compute_spectrum<SpectraMatrixClass>(op, Spectra::LARGEST_ALGE, 1, mat_dim, largest_evals, largest_evecs);
-	}
-
+	SymmSolver<SpectraMatrixClass, SpectraShiftSolveClass> solver(op);
+	solver.calc_largest_evalues(Neigs, largest_evals, largest_evecs);
+	Eigen::VectorXd smallest_evals;
+	std::vector<Eigen::VectorXd> smallest_evecs;
 	if(Nsmallest > 0)
 	{
 		//get largest eval
 		double lambda0 = largest_evals[0];
-		//get L - lambda I
-		SpectraMatrixClass shift = reverse_and_subtract<SpectraMatrixClass>(op, lambda0)
-		//create object & do calc
-		Eigen::VectorXd smallest_evals, small_evals_sorted;
-		std::vector<Eigen::VectorXd> smallest_evecs, small_evecs_sorted;
-		do_compute_spectrum<SpectraMatrixClass>(op, Spectra::LARGEST_ALGE, Nsmallest, mat_dim, smallest_evals, smallest_evecs);
-		//add lambda to all evalues
-		smallest_evals = -smallest_evals + lambda0*Eigen::VectorXd::Ones(smallest_evals.size());
-		small_evals_sorted.resize(smallest_evals.size());
-		small_evecs_sorted.resize(smallest_evals.size());
-		for(size_t i = 0; i < smallest_evals.size(); i++)
-		{
-			small_evals_sorted[smallest_evals.size()-1-i] = smallest_evals[i];
-			small_evecs_sorted[smallest_evals.size()-1-i] = smallest_evecs[i];
-		}
+		solver.flip_and_shift_and_calc_largest_evalues(Nsmallest, smallest_evals, smallest_evecs, -lambda0); 
 	}
 
 	//concatenate
 	if(Nsmallest > 0 && Nlargest > 0)
 	{
-		evalues << largest_evals, small_evals_sorted;
+		evalues.head(Nlargest) = largest_evals;
+		evalues.tail(Nsmallest) = smallest_evals;
 		evectors = largest_evecs;
-		evectors.insert(evectors.end(), small_evecs_sorted.begin(), small_evecs_sorted.end());
+		evectors.insert(evectors.end(), smallest_evecs.begin(), smallest_evecs.end());
 	}
 	else
 	{
@@ -140,9 +241,66 @@ template<class SpectraMatrixClass> void compute_partial_spectrum(SpectraMatrixCl
 			evectors = largest_evecs;
 		}
 	}
+}
 
+template<class SpectraMatrixClass, class SpectraShiftSolveClass> void compute_full_spectrum(SpectraMatrixClass & op, const size_t & mat_dim, 
+													Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
+{
+	auto start = std::chrono::system_clock::now();
+	if(mat_dim <= 1000)
+	{
+		compute_partial_spectrum<SpectraMatrixClass, SpectraShiftSolveClass>(op, mat_dim, size_t(0.51*mat_dim), mat_dim - size_t(0.51*mat_dim), evalues, evectors);
+	}
+	else
+	{
+		//get largest first, then get next largst by shifting
+		int step = 10;
+		SymmSolver<SpectraMatrixClass, SpectraShiftSolveClass> solver(op);
+		evalues = Eigen::VectorXd::Ones(step+1);
+		while(std::fabs(evalues[evalues.size()-1] - evalues[evalues.size()-2]) < 1E-06*std::fabs(evalues[evalues.size()-1]))
+		{
+			solver.calc_largest_evalues(step+1,evalues,evectors);
+			if(std::fabs(evalues[evalues.size()-1] - evalues[evalues.size()-2]) < 1E-06*std::fabs(evalues[evalues.size()-1]))
+			{
+				step += 1;
+			}
+		}
+		
+		while(evalues.size() < int(mat_dim))
+		{
+			std::cout << evalues.size() << "\n";
+			//start again between last two
+		    double lambda0 = 0.5*(evalues[evalues.size()-1] + evalues[evalues.size()-2]);
+			//remove last
+			evalues.conservativeResize(evalues.size()-1);
+			evectors.pop_back();
+			Eigen::VectorXd h_evals = Eigen::VectorXd::Ones(step+1);
+			std::vector<Eigen::VectorXd> h_evecs;
+			if(step > int(mat_dim - evalues.size()) - 1) 
+			{
+				step = int(mat_dim - evalues.size()) - 1;
+			}
+			while(std::fabs(h_evals[h_evals.size()-1] - h_evals[h_evals.size()-2]) < 1E-06*std::fabs(h_evals[h_evals.size()-1])
+				  && step < int(mat_dim - evalues.size()))
+			{
+				if(solver.flip_shift_solve_largest_evalues(step+1, h_evals, h_evecs, -lambda0))
+				{
+					std::cout << "Error computing spectrum, aborting...\n";
+					abort_on_failure();
+				}
+				if(std::fabs(h_evals[h_evals.size()-1] - h_evals[h_evals.size()-2]) < 1E-06*std::fabs(h_evals[h_evals.size()-1]))
+				{
+					step += 1;
+				}
+			}
+			Eigen::VectorXd evnew(evalues.size() + h_evals.size());
+			evnew << evalues, h_evals;
+			evalues = evnew;
+			evectors.insert(evectors.end(), h_evecs.begin(), h_evecs.end());
+		}
+	}
 	auto end = std::chrono::system_clock::now();
-	std::cout << "Spectral computation took " << (std::chrono::duration<double>(end-start)).count() << '\n';
+	std::cout << "Spectral calc took: " << std::chrono::duration_cast<std::chrono::seconds>(end-start).count() << "s.\n";
 }
 
 template<int TYPE> double edge_weight_calc(const double & rad, const double & length, const double & scale)
@@ -201,39 +359,45 @@ public:
 		this->solve_effective_conductance_problem();
 	}
 
-	void compute_truncated_laplacian_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
+	inline const Eigen::VectorXd& get_edge_weights(){ return this->edge_weight; }
+
+	void compute_truncated_laplacian_spectrum(const int & Nsmallest, const int & Nlargest)
 	{
-		compute_spectrum<Eigen::SparseMatrix<double>>>(this->Truncated_Laplacian, mat_dim, Nsmallest, Nlargest,
+		size_t mat_dim = this->Truncated_Laplacian.rows();
+		compute_partial_spectrum<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>>
+			                                 (this->Truncated_Laplacian, mat_dim, Nsmallest, Nlargest,
 								                     this->truncated_laplacian_evalues, this->truncated_laplacian_evectors);
 		this->calc_laplacian_reffs();
 	}
-	void compute_maury_spectrum(const size_t & Nsmallest, const size_t & Nlargest)
+	void compute_maury_spectrum(const int & Nsmallest, const int & Nlargest)
 	{
-		compute_spectrum<Rmat<RMAT1>>(this->Maury_matrix, mat_dim, Nmallest, Nlargest,
-			                              this->maury_evalues, this->maury_evectors);
+		size_t mat_dim = this->Maury_matrix.rows();
+		compute_partial_spectrum<Rmat<RMAT1>,Rmatinv<RMAT1>>(this->Maury_matrix, mat_dim, Nsmallest, Nlargest,
+			                                  this->maury_evalues, this->maury_evectors);
 		//do ceff calc
 		this->calc_maury_ceffs();
 	}
 
 	void compute_full_truncated_laplacian_spectrum()
 	{
-		compute_full_spectrum<Eigen::SparseMatrix<double>>>(this->Truncated_Laplacian, mat_dim,
-			                 this->truncated_laplacian_evalues,  this->truncated_laplacian_evectors);
+		size_t mat_dim = this->Truncated_Laplacian.rows();
+		compute_full_spectrum<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>>
+			         (this->Truncated_Laplacian, mat_dim,  this->truncated_laplacian_evalues, this->truncated_laplacian_evectors);
 		this->calc_laplacian_reffs();
 	}
 	void compute_full_maury_spectrum()
 	{
-		compute_full_spectrum<Rmat<RMAT1>>(this->Maury_matrix, mat_dim,
-																		        this->maury_evalues, this->maury_evectors);
+		size_t mat_dim = this->Maury_matrix.rows();
+		compute_full_spectrum<Rmat<RMAT1>,Rmatinv<RMAT1>>(this->Maury_matrix, mat_dim, this->maury_evalues, this->maury_evectors);
 		//do ceff calc
 		this->calc_maury_ceffs();
 	}
 	void compute_adjacency_specturm(const size_t & Nsmallest, const size_t & Nlargest)
 	{
-		compute_spectrum<Eigen::SparseMatrix<double>>(this->Adjacency, this->count_nodes(),
+		compute_partial_spectrum<Eigen::SparseMatrix<double>>(this->Adjacency, this->count_nodes(),
 		            Nsmallest, Nlargest, this->adjacency_evalues, this->adjacencey_evectors);
 	}
-	void compute_full_specturm()
+	void compute_full_adjacency_specturm()
 	{
 		compute_full_spectrum<Eigen::SparseMatrix<double>>(this->Adjacency, this->count_nodes(),
 		                            this->adjacency_evalues, this->adjacencey_evectors);
@@ -342,10 +506,20 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_matrices()
 	auto start = std::chrono::system_clock::now();
 	//fill vector of edge weights
 	this->edge_weight = Eigen::VectorXd::Zero(this->count_edges());
+	std::cout << this->get_edge(0)->get_geom()->get_inner_radius() << ' ' << this->get_edge(0)->get_geom()->get_length() << '\n';
 	for(size_t j = 0; j < this->count_edges(); j++)
 	{
+		double scale =  this->get_edge(j)->branch_count();
+		if(TYPE == RESISTANCE_NETWORK)
+		{
+			scale *= M_PI*1E-06 / (8*VISCOSITY);   //conductance in L / cmH20 s, airway geom in mm
+		}
+		if(TYPE == DIFFUSION_NETWORK)
+		{
+			scale *= M_PI * DIFFUSIVITY;
+		}
 		this->edge_weight[j] = edge_weight_calc<TYPE>(this->get_edge(j)->get_geom()->get_inner_radius(),
-				this->get_edge(j)->get_geom()->get_length(), this->get_edge(j)->branch_count());
+				                                      this->get_edge(j)->get_geom()->get_length(), scale);
 	}
 	//initialise various matrices
 	this->Degree = Eigen::SparseMatrix<double>(this->count_nodes(), this->count_nodes());
@@ -409,9 +583,9 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_matrices()
 		double row_sum = 0;
 		for (Eigen::SparseMatrix<double>::InnerIterator it(this->Laplacian,k); it; ++it)
 		{
-			if(it.row() < TLsize)  //fill A
+			if(size_t(it.row()) < TLsize)  //fill A
 			{
-				TL_fill.push_back(Eigen::Triplet<double>(it.row(), it.col(), it.value()));
+				TL_fill.push_back(Eigen::Triplet<double>(int(it.row()), int(it.col()), it.value()));
 			}
 			else  //sum over rows
 			{
@@ -419,7 +593,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_matrices()
 			}
 		}
 		//fill C
-		TL_fill.push_back(Eigen::Triplet<double>(TLsize, k, row_sum));
+		TL_fill.push_back(Eigen::Triplet<double>(int(TLsize), k, row_sum));
 	}
 	Eigen::VectorXd row_sum = Eigen::VectorXd::Zero(TLsize);
 	double diag_sum = 0;
@@ -475,7 +649,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::solve_effective_conductance_probl
 	{
 		for (Eigen::SparseMatrix<double>::InnerIterator it(this->Laplacian,i); it; ++it)
 		{
-			A_fill.push_back(Eigen::Triplet<double>(it.row(), it.col(), it.value()));
+			A_fill.push_back(Eigen::Triplet<double>(int(it.row()), int(it.col()), it.value()));
 		}
 	}
 	//enforce pressure boundary conditions
@@ -648,7 +822,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::print_laplacian_modes_csv(const s
 	headers.resize(2);
 	headers[0] = std::string("Eigenvalue");
 	headers[1] = std::string("Relative_effective_resistance");
-	int nevals = this->truncated_laplacian_evalues.size();
+	int nevals = int(this->truncated_laplacian_evalues.size());
 	std::vector<std::vector<double>> data;
 	data.resize(nevals);
 	for(size_t n = 0; n < nevals; n++)
@@ -666,7 +840,7 @@ template<int TYPE> void SpectralNetwork<TYPE>::print_maury_modes_csv(const std::
 	headers.resize(2);
 	headers[0] = std::string("Eigenvalue");
 	headers[1] = std::string("Relative_effective_conductance");
-	int nevals = this->maury_evalues.size();
+	int nevals = int(this->maury_evalues.size());
 	std::vector<std::vector<double>> data;
 	data.resize(nevals);
 	for(size_t n = 0; n < nevals; n++)
