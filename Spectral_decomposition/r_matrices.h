@@ -39,7 +39,6 @@ public:
 	Rmat():Rbase<OPT>(){};
 	Rmat(network::Network<network::Node,network::Edge<network::Node>> *tree, const Eigen::VectorXd & conductance):Rbase<RMAT2>(tree, conductance_weight){};
 	void perform_op(double *x_in, double *y_out);
-
 	inline void print_Tmat()
 	{
 		std::cout << "T: " << T.toDense() << '\n';
@@ -48,6 +47,7 @@ public:
 	{
 		std::cout << "diag(r): " << this->diag_r.toDense() << '\n';
 	}
+
 };
 
 template<> Rmat<RMAT1>::Rmat(network::Network<network::Node,network::Edge<network::Node>> *tree, const Eigen::VectorXd & conductance_weight):Rbase<RMAT1>(tree, conductance_weight)
@@ -195,7 +195,8 @@ private:
 	Eigen::SparseMatrix<double> full_mat;
 	Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
 	Eigen::VectorXd rvec_raw;
-	double full_mat_dim, shift;
+	int full_mat_dim;
+	double shift;
 	void reinitialise();
 public:
 	Rmatinv():Rbase<OPT>(){};
@@ -238,12 +239,12 @@ template<int OPT> void Rmatinv<OPT>::reinitialise()
 		for(size_t ji = 0; ji < this->tree->count_edges_in(k); ji++)
 		{
 			size_t j = this->tree->get_edge_in_index(k,ji);
-			A_fill.push_back(Eigen::Triplet<double>(int(this->tree->count_edges() + k), j, 1.0));
+			A_fill.push_back(Eigen::Triplet<double>(int(this->tree->count_edges() + k), int(j), 1.0));
 		}
 		for(size_t jo = 0; jo < this->tree->count_edges_out(k); jo++)
 		{
 			size_t j = this->tree->get_edge_out_index(k,jo);
-			A_fill.push_back(Eigen::Triplet<double>(int(this->tree->count_edges() + k), j, -1.0));
+			A_fill.push_back(Eigen::Triplet<double>(int(this->tree->count_edges() + k), int(j), -1.0));
 		}
 	}
 	//terminal nodes pressure = -vector in

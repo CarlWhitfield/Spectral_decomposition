@@ -3,7 +3,7 @@
 #include<Eigen\Dense>
 #include<Eigen\Sparse>
 #include<SymEigsSolver.h>
-#include <SymEigsShiftSolver.h>
+#include<SymEigsShiftSolver.h>
 #include<GenEigsSolver.h>
 #include<MatOp\SparseGenMatProd.h>
 #include<MatOp\SparseSymMatProd.h>
@@ -19,6 +19,11 @@ typedef network::Network<network::Node,network::Edge<network::Node>> Tree;
 #define DIFFUSION_NETWORK 1
 #define VISCOSITY 1.93E-07  //cmH20s
 #define DIFFUSIVITY 1
+
+//sort options
+#define LARGEST_SORT 1
+#define SMALLEST_SORT 2
+#define DOMINANT_SORT 3
 
 template<class SpectraSolver, class SpectraOp> int do_solve(SpectraOp * op, const int & Neigs, const int & eig_param,
 							     const int & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
@@ -262,7 +267,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass> void compute_fu
 			solver.calc_largest_evalues(step+1,evalues,evectors);
 			if(std::fabs(evalues[evalues.size()-1] - evalues[evalues.size()-2]) < 1E-06*std::fabs(evalues[evalues.size()-1]))
 			{
-				step += 1;
+				step += 11;
 			}
 		}
 		
@@ -276,6 +281,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass> void compute_fu
 			evectors.pop_back();
 			Eigen::VectorXd h_evals = Eigen::VectorXd::Ones(step+1);
 			std::vector<Eigen::VectorXd> h_evecs;
+			step = 10;
 			if(step > int(mat_dim - evalues.size()) - 1) 
 			{
 				step = int(mat_dim - evalues.size()) - 1;
@@ -290,7 +296,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass> void compute_fu
 				}
 				if(std::fabs(h_evals[h_evals.size()-1] - h_evals[h_evals.size()-2]) < 1E-06*std::fabs(h_evals[h_evals.size()-1]))
 				{
-					step += 1;
+					step += 11;
 				}
 			}
 			Eigen::VectorXd evnew(evalues.size() + h_evals.size());
@@ -330,10 +336,15 @@ private:
 	void fill_matrices();
 	void solve_effective_conductance_problem();
 	void fill_fluxes_from_term_vals(Eigen::VectorXd & flux, const Eigen::VectorXd & term_flux);
+	void get_term_count_edges(Eigen::VectorXd & term_count);
 	void calc_laplacian_reffs();
 	void calc_maury_ceffs();
-	void print_dominant_vectors_vtk(const std::string & filename, const size_t & Nvecs, const Eigen::VectorXd & evalues,
-									const Eigen::VectorXd & contributions, const std::vector<Eigen::VectorXd> & evectors);
+	void print_evectors_vtk(const std::string & filename, const size_t & Nvecs, const Eigen::VectorXd & evalues,
+							const Eigen::VectorXd & contributions, const std::vector<Eigen::VectorXd> & evectors,
+							const std::vector<Eigen::VectorXd> & solution_contributions, const int & sort_option);
+	void print_evectors_csv(const std::string & filename, const size_t & Nvecs, const Eigen::VectorXd & evalues,
+									const Eigen::VectorXd & contributions, const std::vector<Eigen::VectorXd> & evectors,
+									const int & sort_option);
 public:
 	SpectralNetwork():Tree(){};
 	SpectralNetwork(const std::vector<network::Node*> & n, const std::vector<network::Edge<network::Node>*> & e):Tree(n,e)
@@ -355,6 +366,17 @@ public:
 			          const double & scale_factor, const double & asymm_factor)
 	{
 		this->build_asymmetric_network(Ngens, rad0, length0, scale_factor, asymm_factor);
+		this->fill_matrices();
+		this->solve_effective_conductance_problem();
+	}
+
+	SpectralNetwork(const size_t & Ngens, const double & rad0, const double & length0,
+			          const double & scale_factor, const double & asymm_factor, const double & dr,
+					  const size_t & pert_gen)
+	{
+		this->build_asymmetric_network(Ngens, rad0, length0, scale_factor, asymm_factor);
+		double new_rad = this->get_edge(pow(2,pert_gen)-1)->get_geom()->get_inner_radius()*pow(1+dr,-1.0/4.0);
+		this->get_edge(pow(2,pert_gen)-1)->update_inner_radius(new_rad);
 		this->fill_matrices();
 		this->solve_effective_conductance_problem();
 	}
@@ -403,40 +425,122 @@ public:
 		                            this->adjacency_evalues, this->adjacencey_evectors);
 	}
 
-	void print_dominant_laplacian_evectors_vtk(const std::string & filename, const size_t & Nvecs)
+	void print_laplacian_evectors_vtk(const std::string & filename, const size_t & Nvecs, const int & sort_option)
 	{
-		//copy truncated eigenvectors to full network
-		std::vector<Eigen::VectorXd> node_evecs;
-		node_evecs.resize(this->truncated_laplacian_evectors.size());
-		for(size_t n = 0; n < this->truncated_laplacian_evectors.size(); n++)
+		
+		size_t to_print = std::min(Nvecs, size_t(this->truncated_laplacian_evalues.size()));
+		std::vector<size_t> indices(size_t(this->truncated_laplacian_evalues.size()));
+		iota(indices.begin(), indices.end(), 0);
+		switch(sort_option)
 		{
+		case LARGEST_SORT:
+			{
+				Eigen::VectorXd sort_vec = this->truncated_laplacian_evalues;
+				std::sort(indices.begin(), indices.end(), [&sort_vec](int i1, int i2){ return (sort_vec(i1) > sort_vec(i2)); });
+			} break;
+
+		case SMALLEST_SORT:
+			{
+				Eigen::VectorXd sort_vec = this->truncated_laplacian_evalues;
+				std::sort(indices.begin(), indices.end(), [&sort_vec](int i1, int i2){ return (sort_vec(i1) > sort_vec(i2)); });
+			} break;
+
+		case DOMINANT_SORT:
+			{
+				Eigen::VectorXd sort_vec = this->truncated_laplacian_reffs;
+				std::sort(indices.begin(), indices.end(), [&sort_vec](int i1, int i2){ return (sort_vec(i1) > sort_vec(i2)); });
+			} break;
+
+		default:
+			break;
+		}
+
+		//copy truncated eigenvectors to full network
+		std::vector<Eigen::VectorXd> node_evecs, pressure_contributions;
+		Eigen::VectorXd evalues = Eigen::VectorXd::Zero(to_print), reffs = Eigen::VectorXd::Zero(to_print);
+		node_evecs.resize(to_print);
+		pressure_contributions.resize(to_print);
+		for(size_t n = 0; n < to_print; n++)
+		{
+			evalues[n] = this->truncated_laplacian_evalues[indices[n]];
+			reffs[n] = this->truncated_laplacian_reffs[indices[n]];
+
 			node_evecs[n] = Eigen::VectorXd::Zero(this->count_nodes());
+			pressure_contributions[n] = Eigen::VectorXd::Zero(this->count_nodes());
 			//all internal nodes remain the same
-			node_evecs[n].head(this->truncated_laplacian_evectors[n].size()) = this->truncated_laplacian_evectors[n];
+			node_evecs[n].head(this->truncated_laplacian_evectors[indices[n]].size()) = this->truncated_laplacian_evectors[indices[n]];
 			//all term nodes have same value
-			node_evecs[n].tail(this->count_nodes()-this->truncated_laplacian_evectors[n].size())
-				= this->truncated_laplacian_evectors[n][this->truncated_laplacian_evectors[n].size()-1]
-			    * Eigen::VectorXd::Ones(this->count_nodes()-this->truncated_laplacian_evectors[n].size());
+			//get flux contributions
+			node_evecs[n].tail(this->count_nodes()-this->truncated_laplacian_evectors[indices[n]].size())
+				= this->truncated_laplacian_evectors[indices[n]][this->truncated_laplacian_evectors[indices[n]].size()-1]
+			    * Eigen::VectorXd::Ones(this->count_nodes()-this->truncated_laplacian_evectors[indices[n]].size());
 		}
 		//print
-		this->print_dominant_vectors_vtk(filename, Nvecs, this->truncated_laplacian_evalues, this->truncated_laplacian_reffs, node_evecs);
+		this->print_evectors_vtk(filename, Nvecs, evalues, reffs, node_evecs, pressure_contributions, sort_option);
 	}
-	void print_dominant_maury_evectors_vtk(const std::string & filename, const size_t & Nvecs)
+
+	void print_laplacian_evectors_csv(const std::string & filename, const size_t & Nvecs, const int & sort_option)
 	{
 		//convert maury eigenvectors into edge values for visualisation purposes
-		std::vector<Eigen::VectorXd> edge_evecs;
-		edge_evecs.resize(this->maury_evectors.size());
-		for(size_t n = 0; n < this->maury_evectors.size(); n++)
+		this->print_evectors_csv(filename, Nvecs, this->truncated_laplacian_evalues, this->truncated_laplacian_reffs, 
+			                     this->truncated_laplacian_evectors, sort_option);
+	}
+
+	void print_maury_evectors_vtk(const std::string & filename, const size_t & Nvecs, const int & sort_option)
+	{
+		size_t to_print = std::min(Nvecs, size_t(this->maury_evalues.size()));
+		std::vector<size_t> indices(size_t(this->maury_evalues.size()));
+		iota(indices.begin(), indices.end(), 0);
+		switch(sort_option)
 		{
-			this->fill_fluxes_from_term_vals(edge_evecs[n], this->maury_evectors[n]);
+		case LARGEST_SORT:
+			{
+				Eigen::VectorXd sort_vec = this->maury_evalues;
+				std::sort(indices.begin(), indices.end(), [&sort_vec](int i1, int i2){ return (sort_vec(i1) > sort_vec(i2)); });
+			} break;
+
+		case SMALLEST_SORT:
+			{
+				Eigen::VectorXd sort_vec = this->maury_evalues;
+				std::sort(indices.begin(), indices.end(), [&sort_vec](int i1, int i2){ return (sort_vec(i1) > sort_vec(i2)); });
+			} break;
+
+		case DOMINANT_SORT:
+			{
+				Eigen::VectorXd sort_vec = this->maury_ceffs;
+				std::sort(indices.begin(), indices.end(), [&sort_vec](int i1, int i2){ return (sort_vec(i1) > sort_vec(i2)); });
+			} break;
+
+		default:
+			break;
+		}
+
+		//convert maury eigenvectors into edge values for visualisation purposes
+		std::vector<Eigen::VectorXd> edge_evecs, flux_contributions;
+		Eigen::VectorXd evalues = Eigen::VectorXd::Zero(to_print), ceffs = Eigen::VectorXd::Zero(to_print);
+		edge_evecs.resize(to_print);
+		flux_contributions.resize(to_print);
+		for(size_t n = 0; n < to_print; n++)
+		{
+			this->fill_fluxes_from_term_vals(edge_evecs[n], this->maury_evectors[indices[n]]);
 			edge_evecs[n] = edge_evecs[n].array() / this->Nt.array();
+			//get flux contirbutions here
+			flux_contributions[n] = Eigen::VectorXd::Zero(edge_evecs[n].size());
+			//still need to work this out: TODO
 		}
 		//print
-		this->print_dominant_vectors_vtk(filename, Nvecs, this->maury_evalues, this->maury_ceffs, edge_evecs);
+		this->print_evectors_vtk(filename, Nvecs, evalues, ceffs, edge_evecs, flux_contributions, sort_option);
 	}
+
+	void print_maury_evectors_csv(const std::string & filename, const size_t & Nvecs, const int & sort_option)
+	{
+		//convert maury eigenvectors into edge values for visualisation purposes
+		this->print_evectors_csv(filename, Nvecs, this->maury_evalues, this->maury_ceffs, this->maury_evectors, sort_option);
+	}
+
 	void print_unit_pressure_drop_solutions_vtk(const std::string & filename);
-	void print_laplacian_modes_csv(const std::string & filename);
-	void print_maury_modes_csv(const std::string & filename);
+	void print_all_laplacian_modes_csv(const std::string & filename);
+	void print_all_maury_modes_csv(const std::string & filename);
 };
 
 template<int TYPE> void SpectralNetwork<TYPE>::build_asymmetric_network(const size_t & Ngens, const double & rad0, const double & length0,
@@ -506,7 +610,6 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_matrices()
 	auto start = std::chrono::system_clock::now();
 	//fill vector of edge weights
 	this->edge_weight = Eigen::VectorXd::Zero(this->count_edges());
-	std::cout << this->get_edge(0)->get_geom()->get_inner_radius() << ' ' << this->get_edge(0)->get_geom()->get_length() << '\n';
 	for(size_t j = 0; j < this->count_edges(); j++)
 	{
 		double scale =  this->get_edge(j)->branch_count();
@@ -718,15 +821,50 @@ template<int TYPE> void SpectralNetwork<TYPE>::fill_fluxes_from_term_vals(Eigen:
 
 }
 
+template<int TYPE> void SpectralNetwork<TYPE>::get_term_count_edges(Eigen::VectorXd & term_count)
+{
+	term_count = Eigen::VectorXd::Zero(this->count_edges());
+	for(size_t k = this->get_first_term_index(); k < this->count_nodes(); k++)
+	{
+		size_t kt = k - this->get_first_term_index();
+		size_t j = this->get_edge_in_index(k,0);
+		term_count[j] = 1;
+	}
+
+	//fill in rest of tree by looping over horsfield orders
+	for(size_t ho = 1; ho < this->count_horsfield_orders(); ho++)  //loop over horsfield orders
+	{
+		for(size_t ji = 0; ji < this->count_edges_in_horsfield_order(ho); ji++)    //loop over edges in each order
+		{
+			size_t j = this->get_edge_index_from_horsfield_order(ho,ji);     //index of this edge
+			size_t k_out = this->get_node_out_index(j);
+			for (size_t jo = 0; jo < this->count_edges_out(k_out); jo++)
+			{
+				size_t eo_index = this->get_edge_out_index(this->get_node_out_index(j),jo);
+				term_count[j] += term_count[eo_index];
+			}
+		}
+	}
+	
+
+}
+
 template<int TYPE> void SpectralNetwork<TYPE>::calc_laplacian_reffs()
 {
 	this->truncated_laplacian_reffs = Eigen::VectorXd::Zero(this->truncated_laplacian_evalues.size());
 	size_t TLsize = this->count_nodes() - this->count_term_nodes();
 	for(size_t n = 0; n < size_t(this->truncated_laplacian_evalues.size()); n++)
 	{
-		this->truncated_laplacian_reffs[n] = (this->truncated_laplacian_evectors[n][0] - this->truncated_laplacian_evectors[n][TLsize])*
+		if(this->truncated_laplacian_evalues[n] > 0)
+		{
+			this->truncated_laplacian_reffs[n] = (this->truncated_laplacian_evectors[n][0] - this->truncated_laplacian_evectors[n][TLsize])*
 			                                 (this->truncated_laplacian_evectors[n][0] - this->truncated_laplacian_evectors[n][TLsize])/
 								              this->truncated_laplacian_evalues[n];
+		}
+		else
+		{
+			this->truncated_laplacian_reffs[n] = 0;
+		}
 	}
 	double Q = 1.0 / this->truncated_laplacian_reffs.sum();
 	this->laplacian_pressure = Eigen::VectorXd::Zero(this->count_nodes());
@@ -778,29 +916,120 @@ template<int TYPE> void SpectralNetwork<TYPE>::calc_maury_ceffs()
 	this->maury_pressure[0] = this->maury_pressure[this->get_node_out_index(j_out)] + this->maury_flux[j_out] / this->edge_weight[j_out];
 }
 
-template<int TYPE> void SpectralNetwork<TYPE>::print_dominant_vectors_vtk(const std::string & filename, const size_t & Nvecs, const Eigen::VectorXd & evalues,
-																		  const Eigen::VectorXd & contributions, const std::vector<Eigen::VectorXd> & evectors)
+template<int TYPE> void SpectralNetwork<TYPE>::print_evectors_vtk(const std::string & filename, const size_t & Nvecs, const Eigen::VectorXd & evalues,
+																  const Eigen::VectorXd & contributions, const std::vector<Eigen::VectorXd> & evectors,
+																  const std::vector<Eigen::VectorXd> & solution_contributions, const int & sort_option)
 {
+	std::unordered_map<std::string, std::vector<double>> extra_vals;
+	for(size_t n = 0; n < Nvecs; n++)
+	{
+		std::stringstream name;
+		switch(sort_option)
+		{
+		case DOMINANT_SORT:
+			{
+				name << "Dominant_mode_";
+			} break;
+
+		case LARGEST_SORT:
+			{
+				name << "Largest_mode_";
+			} break;
+
+		case SMALLEST_SORT:
+			{
+				name << "Smallest_mode_";
+			} break;
+
+		default:
+			{
+				name << "Mode_";
+			} break;
+		}
+		name << n << "_eigenvalue_" << evalues[n];
+
+		extra_vals[name.str()] = std::vector<double>(evectors[n].data(), evectors[n].data() + evectors[n].size());
+
+		name.clear();
+		name.str("");
+		if(evectors[0].size() == this->count_nodes())
+		{
+			name << "Pressure_contribution_mode_"; 
+		}
+		else
+		{
+			if(evectors[0].size() == this->count_edges())
+			{
+				name << "Flux_contribution_mode_";
+			}
+			else
+			{
+				name << "Unknown_contribution_mode_";
+			}
+		}		
+		name << n << "_eigenvalue_" << evalues[n];
+		extra_vals[name.str()] = std::vector<double>(solution_contributions[n].data(), solution_contributions[n].data() + solution_contributions[n].size());
+	}
+	this->print_vtk(filename, 1.0, extra_vals);
+}
+
+template<int TYPE> void SpectralNetwork<TYPE>::print_evectors_csv(const std::string & filename, const size_t & Nvecs, 
+		const Eigen::VectorXd & evalues, const Eigen::VectorXd & contributions, const std::vector<Eigen::VectorXd> & evectors,
+		const int & sort_option)
+{
+	std::vector<std::vector<double>> data;
+	std::vector<std::string> headers;
+	headers.resize(evectors[0].size()+2);
+	headers[0]=std::string("Eigenvalue");
+	headers[1]=std::string("Contribution");
+	for(int j = 0; j < evectors[0].size(); j++)
+	{
+		headers[j+2]=std::string("Uentry");
+	}
 	size_t to_print = std::min(Nvecs, size_t(evalues.size()));
 	std::vector<size_t> indices(size_t(evalues.size()));
 	iota(indices.begin(), indices.end(), 0);
-	std::sort(indices.begin(), indices.end(), [&contributions](size_t i1, size_t i2){ return contributions[i1] > contributions[i2]; });
-
-	std::unordered_map<std::string, std::vector<double>> extra_vals;
+	switch(sort_option)
+	{
+		case LARGEST_SORT:
+			{
+				std::sort(indices.begin(), indices.end(), [&evalues](size_t i1, size_t i2){ return evalues[i1] > evalues[i2]; });
+			} break;
+		case SMALLEST_SORT:
+			{
+				std::sort(indices.begin(), indices.end(), [&evalues](size_t i1, size_t i2){ return evalues[i1] < evalues[i2]; });
+			} break;
+		case DOMINANT_SORT:
+			{
+				std::sort(indices.begin(), indices.end(), [&contributions](size_t i1, size_t i2){ return contributions[i1] > contributions[i2]; });
+			} break;
+		default:
+			break;
+	}
+	data.resize(to_print);
 	for(size_t n = 0; n < to_print; n++)
 	{
-		std::stringstream name;
-		name << "Dominant_mode_" << n << "_eigenvalue_" << evalues[indices[n]];
-
-		extra_vals[name.str()] = std::vector<double>(evectors[indices[n]].data(), evectors[indices[n]].data() + evectors[indices[n]].size());
+		data[n].resize(evectors[indices[n]].size()+2);
+		data[n][0] = evalues[indices[n]];
+		data[n][1] = contributions[indices[n]];
+		for(size_t j = 0; j < evectors[indices[n]].size(); j++)
+		{
+			data[n][j+2] = evectors[indices[n]][j];
+		}
 	}
-	this->print_vtk(filename, 1.0, extra_vals);
+	write_csv_file(filename, headers, data);
 }
 
 template<int TYPE> void SpectralNetwork<TYPE>::print_unit_pressure_drop_solutions_vtk(const std::string & filename)
 {
 	std::unordered_map<std::string, std::vector<double>> extra_vals;
 	extra_vals["Flux"] = std::vector<double>(this->flux.data(), this->flux.data() + this->flux.size());
+	Eigen::VectorXd TN;
+	this->get_term_count_edges(TN);
+
+	Eigen::VectorXd Flux_PTN = this->flux.array() / TN.array();
+	//get number of term nodes in an edge
+	extra_vals["Flux_per_TN"] = std::vector<double>(Flux_PTN.data(), Flux_PTN.data() + Flux_PTN.size());
 	extra_vals["Pressure"] = std::vector<double>(this->pressure.data(), this->pressure.data() + this->pressure.size());
 	if(truncated_laplacian_evalues.size() > 0)
 	{
@@ -816,39 +1045,4 @@ template<int TYPE> void SpectralNetwork<TYPE>::print_unit_pressure_drop_solution
 	this->print_vtk(filename, 1.0, extra_vals);
 }
 
-template<int TYPE> void SpectralNetwork<TYPE>::print_laplacian_modes_csv(const std::string & filename)
-{
-	std::vector<std::string> headers;
-	headers.resize(2);
-	headers[0] = std::string("Eigenvalue");
-	headers[1] = std::string("Relative_effective_resistance");
-	int nevals = int(this->truncated_laplacian_evalues.size());
-	std::vector<std::vector<double>> data;
-	data.resize(nevals);
-	for(size_t n = 0; n < nevals; n++)
-	{
-		data[n].resize(2);
-		data[n][0] = this->truncated_laplacian_evalues[n];
-		data[n][1] = this->truncated_laplacian_reffs[n] * this->Ceff;
-	}
-	write_csv_file<double>(filename, headers, data);
-}
 
-template<int TYPE> void SpectralNetwork<TYPE>::print_maury_modes_csv(const std::string & filename)
-{
-	std::vector<std::string> headers;
-	headers.resize(2);
-	headers[0] = std::string("Eigenvalue");
-	headers[1] = std::string("Relative_effective_conductance");
-	int nevals = int(this->maury_evalues.size());
-	std::vector<std::vector<double>> data;
-	data.resize(nevals);
-	for(size_t n = 0; n < nevals; n++)
-	{
-		data[n].resize(2);
-		data[n][0] = this->maury_evalues[n];
-		data[n][1] = this->maury_ceffs[n] / this->Ceff;
-	}
-
-	write_csv_file<double>(filename, headers, data);
-}
