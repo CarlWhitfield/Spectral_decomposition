@@ -31,6 +31,8 @@ typedef network::Network<network::Node,network::Edge<network::Node>> Tree;
 
 void sort_and_return_by_evalues(Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors);
 
+//template functions for performing spectra solve operations
+//straight forward eigenvalue solver
 template<class SpectraSolver, class SpectraOp> int do_solve(SpectraOp * op, const int & Neigs, const int & eig_param,
 							     const int & mat_dim, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
 {
@@ -56,6 +58,7 @@ template<class SpectraSolver, class SpectraOp> int do_solve(SpectraOp * op, cons
 	return 1;
 }
 
+//shift-solve operation
 template<class SpectraSolver, class SpectraOp> int do_shift_solve(SpectraOp * op, const int & Neigs, const int & eig_param,
 					const int & mat_dim, const double &s, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
 {
@@ -81,6 +84,7 @@ template<class SpectraSolver, class SpectraOp> int do_shift_solve(SpectraOp * op
 	return 1;
 }
 
+//retrieve eigenvalues and eigenvectors from solver
 template<class SpectraSolver> void get_evals_and_evecs(SpectraSolver * solver, const int & mat_dim, Eigen::VectorXd & evalues, 
 													                                   std::vector<Eigen::VectorXd> & evectors)
 {
@@ -91,7 +95,7 @@ template<class SpectraSolver> void get_evals_and_evecs(SpectraSolver * solver, c
 		evectors[k] = solver->eigenvectors().block(0, k, mat_dim, 1);
 	}
 }
-
+//function to compute parts of the spectrum
 template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void compute_partial_spectrum
 	                              (SpectraMatrixClass & op, const size_t & mat_dim, const int & Nsmallest,
 	                              const int & Nlargest, Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
@@ -247,6 +251,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void
 	std::cout << "Spectral calc took: " << std::chrono::duration_cast<std::chrono::seconds>(end-start).count() << "s.\n";
 }
 
+//compute all eigenvalues above a particular cutoff
 template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void compute_spectrum_above_cutoff
 	                             (SpectraMatrixClass & op, const size_t & mat_dim, const double & cutoff,
 								  Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
@@ -298,6 +303,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void
 	}
 }
 
+//compute all eigenvalues below a particular cutoff
 template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void compute_spectrum_below_cutoff
 	                             (SpectraMatrixClass & op, const size_t & mat_dim, const double & cutoff,
 								  Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
@@ -350,6 +356,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void
 	}
 }
 
+//compute whole spectrum of operator
 template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void compute_full_spectrum(SpectraMatrixClass & op, const size_t & mat_dim, 
 													Eigen::VectorXd & evalues, std::vector<Eigen::VectorXd> & evectors)
 {
@@ -365,6 +372,7 @@ template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> void
 	}
 }
 
+//custom spectra solver
 template<class SpectraMatrixClass, class SpectraShiftSolveClass, int RTYPE> class SymmSolver
 {
 protected:
@@ -384,6 +392,7 @@ public:
 		std::vector<Eigen::VectorXd> & evectors, const double & s){};
 };
 	
+//template specifiers
 template<int RTYPE> class SymmSolver<Rmat<RTYPE>, Rmatinv<RTYPE>, RTYPE>    //functions defined for SpectraMatrix class is a r matrix
 {
 protected:
@@ -514,13 +523,16 @@ public:
 
 };
 
+//function to caluclate edge weights -- default poiseille resistance
 template<int TYPE> double edge_weight_calc(const double & rad, const double & length, const double & scale)
 {
 	return (scale*rad*rad*rad*rad/length);
 }
 
+//or 1D diffusion
 template<> double edge_weight_calc<DIFFUSION_NETWORK>(const double & rad, const double & length, const double & scale);
 
+//custom network class
 template<int RTYPE = RMAT1> class SpectralNetwork: public Tree
 {
 private:

@@ -1,5 +1,6 @@
 #include"r_matrices.h"
 
+//Rmat functions
 template<> void Rmat<RMAT1>::initialise(ANetwork * tree, 
 	                                    const Eigen::VectorXd & conductance_weight)          
 {

@@ -3,6 +3,7 @@
 #include"define_spectral_options.h"
 #include"define_spectral_params.h"
 
+//function to read options and param lists
 void read_options(const int &argc, char** argv, SpectralOptionList* o, SpectralParameterList *p)  //constructs lung simulation from command line args
 {
 	//5 possible arguments in total, all filenames, sort by extensions
@@ -20,6 +21,7 @@ void read_options(const int &argc, char** argv, SpectralOptionList* o, SpectralP
 	p->check_and_convert(o);  //run checks and conversions here
 }
 
+//setup network and return shared pointer
 std::shared_ptr<SpectralNetwork<>> setup_tree(SpectralOptionList* o, SpectralParameterList* p)
 {
 	int tree_type;
@@ -84,6 +86,7 @@ std::shared_ptr<SpectralNetwork<>> setup_tree(SpectralOptionList* o, SpectralPar
 	return tree;
 }
 
+//functions to calculate and print spectrum
 int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, SpectralOptionList *o, SpectralParameterList *p)
 {
 	std::cout << "Computing Laplacian Spectrum...\n";

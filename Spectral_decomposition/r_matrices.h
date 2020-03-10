@@ -9,6 +9,7 @@
 #define RMAT1 0  //using T matrix
 #define RMAT2 1  //using tree directly
 
+//base class for Rmatrix
 template<int OPT> class Rbase
 {
 protected:
@@ -37,6 +38,7 @@ public:
 	virtual void perform_op(double *x_in, double *y_out){};
 };
 
+//direct R matrix object
 template<int OPT> class Rmat: public Rbase<OPT>  //class to perform multiplication by R matrix using T decomposition
 {
 protected:
@@ -63,6 +65,7 @@ public:
 
 };
 
+//inverse of R matrix object
 template<int OPT> class Rmatinv: public Rbase<OPT>
 {
 private:
@@ -87,6 +90,7 @@ public:
 	void perform_op(double *x_in, double *y_out);
 };
 
+//functions for Rmatinv
 template<int OPT> void Rmatinv<OPT>::reinitialise()
 {
 	//do not store Rmat, instead make pressure drop solver
