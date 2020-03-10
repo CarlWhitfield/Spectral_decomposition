@@ -627,7 +627,7 @@ public:
 
 	inline void compute_partial_graph_laplacian_spectrum(const int & Nsmallest, const int & Nlargest)
 	{
-		size_t mat_dim = this->Laplacian.rows();
+		size_t mat_dim = size_t(this->Laplacian.rows());
 		compute_partial_spectrum<Eigen::SparseMatrix<double>, Spectra::SparseSymShiftSolve<double>, RTYPE>
 			                    (this->Laplacian, mat_dim, Nsmallest, Nlargest,
 								 this->graph_laplacian_evalues, this->graph_laplacian_evectors);
