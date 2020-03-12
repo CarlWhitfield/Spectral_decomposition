@@ -6,18 +6,26 @@ SpectralParameterList::SpectralParameterList():ParameterList()
 {
 	using namespace inlist;
 	//integer parameters
-	this->add(N_GENERATIONS_KEY, new Parameter<int>(N_GENERATIONS_DEFAULT, std::string(N_GENERATIONS_KEY)));
-	this->add(N_PRINT_KEY, new Parameter<int>(N_PRINT_DEFAULT, std::string(N_PRINT_KEY)));
-	this->add(PERTURBATION_GEN_KEY, new Parameter<int>(PERTURBATION_GEN_DEFAULT, std::string(PERTURBATION_GEN_KEY)));
+	auto ngens_par = std::make_shared<Parameter<int>>(N_GENERATIONS_DEFAULT, std::string(N_GENERATIONS_KEY));
+	auto nprint_par = std::make_shared<Parameter<int>>(N_PRINT_DEFAULT, std::string(N_PRINT_KEY));
+	auto pgen_par = std::make_shared<Parameter<int>>(PERTURBATION_GEN_DEFAULT, std::string(PERTURBATION_GEN_KEY));
+	this->add(N_GENERATIONS_KEY, ngens_par);
+	this->add(N_PRINT_KEY, nprint_par);
+	this->add(PERTURBATION_GEN_KEY, pgen_par);
 
 	//double params
-	this->add(ASYMMETRY_KEY, new Parameter<double>(ASYMMETRY_DEFAULT, std::string(ASYMMETRY_KEY)));
-	this->add(PERTURBATION_FRACTION_KEY, new Parameter<double>(PERTURBATION_FRACTION_DEFAULT, 
-		      std::string(PERTURBATION_FRACTION_KEY)));
-	this->add(CUTOFF_POINT_KEY, new Parameter<double>(CUTOFF_POINT_DEFAULT, std::string(CUTOFF_POINT_KEY)));
-	this->add(SEED_RADIUS_KEY, new Parameter<double>(SEED_RADIUS_DEFAULT, std::string(SEED_RADIUS_KEY)));
-	this->add(SEED_LENGTH_KEY, new Parameter<double>(SEED_LENGTH_DEFAULT, std::string(SEED_LENGTH_KEY)));
-	this->add(SCALE_FACTOR_KEY, new Parameter<double>(SCALE_FACTOR_DEFAULT, std::string(SCALE_FACTOR_KEY)));
+	auto asymm_par = std::make_shared<Parameter<double>>(ASYMMETRY_DEFAULT, std::string(ASYMMETRY_KEY));
+	auto pert_par = std::make_shared<Parameter<double>>(PERTURBATION_FRACTION_DEFAULT, std::string(PERTURBATION_FRACTION_KEY));
+	auto cutoff_par = std::make_shared<Parameter<double>>(CUTOFF_POINT_DEFAULT, std::string(CUTOFF_POINT_KEY));
+	auto srad_par = std::make_shared<Parameter<double>>(SEED_RADIUS_DEFAULT, std::string(SEED_RADIUS_KEY));
+	auto slen_par = std::make_shared<Parameter<double>>(SEED_LENGTH_DEFAULT, std::string(SEED_LENGTH_KEY));
+	auto sf_par = std::make_shared<Parameter<double>>(SCALE_FACTOR_DEFAULT, std::string(SCALE_FACTOR_KEY));
+	this->add(ASYMMETRY_KEY, asymm_par);
+	this->add(PERTURBATION_FRACTION_KEY, pert_par);
+	this->add(CUTOFF_POINT_KEY, cutoff_par);
+	this->add(SEED_RADIUS_KEY, srad_par);
+	this->add(SEED_LENGTH_KEY, slen_par);
+	this->add(SCALE_FACTOR_KEY, sf_par);
 }
 
 void SpectralParameterList::check_and_convert(SpectralOptionList *o)

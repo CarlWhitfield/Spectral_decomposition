@@ -10,21 +10,30 @@ using namespace inlist;
 SpectralOptionList::SpectralOptionList():OptionList()
 {
 	//mutliple choice options
-	this->add(TREE_KEY, new Option<char>(TREE_DEFAULT, std::string(TREE_KEY), 
-		      Tree_option_list, Tree_option_name_list, TREE_OPTION_COUNT));
-	this->add(EDGE_WEIGHT_KEY, new Option<char>(EDGE_WEIGHT_DEFAULT, std::string(EDGE_WEIGHT_KEY), 
-		      Edge_weight_option_list, Edge_weight_option_name_list, EDGE_WEIGHT_OPTION_COUNT));
-	this->add(OPERATOR_KEY, new Option<char>(OPERATOR_DEFAULT, std::string(OPERATOR_KEY), 
-		      Operator_option_list, Operator_option_name_list, OPERATOR_OPTION_COUNT));
-	this->add(ORDER_KEY, new Option<char>(ORDER_DEFAULT, std::string(ORDER_KEY), 
-		      Order_option_list, Order_option_name_list, ORDER_OPTION_COUNT));
-	this->add(CUTOFF_MODE_KEY, new Option<char>(CUTOFF_MODE_DEFAULT, std::string(CUTOFF_MODE_KEY), 
-		      Cutoff_option_list, Cutoff_option_name_list, CUTOFF_OPTION_COUNT));
-	this->add(OUTPUT_SORT_KEY, new Option<char>(OUTPUT_SORT_DEFAULT, std::string(OUTPUT_SORT_KEY),
-			  Output_sort_option_list, Output_sort_option_name_list, OUTPUT_SORT_OPTION_COUNT));
+	auto tree_opt = std::make_shared<Option<char>>(TREE_DEFAULT, std::string(TREE_KEY), 
+		      Tree_option_list, Tree_option_name_list, TREE_OPTION_COUNT);
+	auto weight_opt = std::make_shared<Option<char>>(EDGE_WEIGHT_DEFAULT, std::string(EDGE_WEIGHT_KEY), 
+		      Edge_weight_option_list, Edge_weight_option_name_list, EDGE_WEIGHT_OPTION_COUNT);
+	auto op_opt = std::make_shared<Option<char>>(OPERATOR_DEFAULT, std::string(OPERATOR_KEY), 
+		      Operator_option_list, Operator_option_name_list, OPERATOR_OPTION_COUNT);
+	auto order_opt = std::make_shared<Option<char>>(ORDER_DEFAULT, std::string(ORDER_KEY), 
+		      Order_option_list, Order_option_name_list, ORDER_OPTION_COUNT);
+	auto cutoff_opt = std::make_shared<Option<char>>(CUTOFF_MODE_DEFAULT, std::string(CUTOFF_MODE_KEY), 
+		      Cutoff_option_list, Cutoff_option_name_list, CUTOFF_OPTION_COUNT);
+	auto out_opt = std::make_shared<Option<char>>(OUTPUT_SORT_DEFAULT, std::string(OUTPUT_SORT_KEY),
+			  Output_sort_option_list, Output_sort_option_name_list, OUTPUT_SORT_OPTION_COUNT);
+	this->add(TREE_KEY, tree_opt);
+	this->add(EDGE_WEIGHT_KEY, weight_opt);
+	this->add(OPERATOR_KEY, op_opt);
+	this->add(ORDER_KEY, order_opt);
+	this->add(CUTOFF_MODE_KEY, cutoff_opt);
+	this->add(OUTPUT_SORT_KEY, out_opt);
+
 	//boolean options
-	this->add(PRINT_VTKS, new Option<bool>(PRINT_VTK_DEFAULT, std::string(PRINT_VTKS)));
-	this->add(PRINT_CSVS, new Option<bool>(PRINT_CSV_DEFAULT, std::string(PRINT_CSVS)));
+	auto vtk_opt = std::make_shared<Option<bool>>(PRINT_VTK_DEFAULT, std::string(PRINT_VTKS));
+	auto csv_opt = std::make_shared<Option<bool>>(PRINT_CSV_DEFAULT, std::string(PRINT_CSVS));
+	this->add(PRINT_VTKS, vtk_opt);
+	this->add(PRINT_CSVS, csv_opt);
 }
 
 std::string SpectralOptionList::generate_output_name() const
