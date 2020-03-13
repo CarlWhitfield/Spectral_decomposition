@@ -30,6 +30,7 @@ Code options are:
       Print_csv: Print full modes in csv format? 't' of 'f'
      
 Code parameters are:
+
       Print: Integer parameter. No. of eigenmodes to print in full
       
       Gens: Integer parameter. If tree option 'a' or 'p', no. of tree generations.
@@ -39,7 +40,11 @@ Code parameters are:
       A: Floating pt parameter 0 <= A <= 1. If tree option 'a' or 'p', asymmetric branching factor
       
       Pert_frac: Floating pt parameter. If tree option 'p', relative perturbation to airway resistance (e.g. 0.5 is 50% increase in resistance), cannot be <= -1.
+      
       Cutoff: Floating pt parameter. If Cutoff option 'f' - fraction of spectrum to keep 0 <= Cutoff <= 1. If 'v' - eigenvalue to cutoff at.
+      
       Seed_radius: Floating pt parameter. If tree option 'a' or 'p', radius of first airway arbitrary units
+      
       Seed_length: Floating pt parameter. If tree option 'a' or 'p', length of first airway arbitrary units
+      
       Scale_factor: Floating pt parameter. If tree option 'a' or 'p', scale factor for branching, default 3 (Murray's law).  
