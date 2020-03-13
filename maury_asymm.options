@@ -1,9 +1,0 @@
-%options file for generated asymmetric network, calculating the spectrum of the maury operator
-Tree a        %Tree option: 'a' asymmetric, 'p' perturbation, 'f' from file
-Weighting r   %Edge weight: 'r' resistance, 'd' diffusion
-Operator m    %Operator, 'm' maury, 'i' internal laplacian, 't' truncated laplacian, 'f' full laplacian, 'a' adjacency
-Order l       %Order to calc in: 'l' largest, 's' smallest
-Cutoff v      %How to cutoff: 'n' no cutoff (full spectrum), 'f' fraction of spectrum, 'v' cutoff by eigenvalue
-Sort l        %Sort full mode output by: 'l' largest evalue, 's' smallest evalue, 'd' dominant, 'a' print all
-Print_vtk t   %Print full modes in vtk format? 't' of 'f'
-Print_csv t   %Print full modes in csv format? 't' of 'f'
