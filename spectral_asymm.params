@@ -1,0 +1,12 @@
+%Comments start with a %
+%Parameter file used to generate asymmetric network a compute spectra
+
+Print 20          %No. of modes to print in full
+Gens 10            %No. of generations: used in asymm and pert tree types
+%Pert_gen 5       %If pert mode, generation to apply perturbation
+A 0.95             %If asymm or pert mode, asymm parameter
+%Pert_frac 0.5    %If pert mode: dr
+Cutoff 2       %Cutoff param: if 'f' - fraction of spectrum to keep, if 'v' - eigenvalue to cutoff at
+Seed_radius 1.0   %If asymm or pert, radius of first airway
+Seed_length 6.0   %If asymm or pert, length of first airway
+Scale_factor 3.0  %If asymm or pert, scale factor for branching
