@@ -12,6 +12,7 @@ If using the Tree f (from file) option, then files defining the tree network nee
 - .termnodes: min 1 column: list of node indices that terminate the tree (int).
 
 Code options are:
+      
       Tree: Options are 'a' asymmetric, 'p' perturbation, 'f' from file. First two build asymmetric tree with fixed number of gens. Perturbation option changes the radius of a single airway.
 
       Weighting: Options are 'r' = resistance or 'd' = diffusion. Determines edge weighting, resistance is Poiseuille r = 8 nu l / Pi r^4 (for viscosity nu) edge weight is w = 1/r or diffusion w = Pi D r^2 / l (diffusivity D)
