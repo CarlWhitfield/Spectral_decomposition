@@ -19,3 +19,11 @@
 *.obj
 *.filters
 *.user
+*.pbxproj
+*.xcworkspacedata
+*.xcworkspacedata
+*.plist
+*.xcuserstate
+*.xcscheme
+*.plist
+*.xcuserstate

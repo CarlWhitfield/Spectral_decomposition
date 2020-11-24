@@ -9,11 +9,12 @@
 #define RMAT1 0  //using T matrix
 #define RMAT2 1  //using tree directly
 
+typedef network::Network<network::Node,network::Edge<network::Node>> ANetwork;
+
 //base class for Rmatrix
 template<int OPT> class Rbase
 {
 protected:
-	typedef network::Network<network::Node,network::Edge<network::Node>> ANetwork;
 	ANetwork * tree;
 	size_t Ntermnodes, Nedges;
 	Eigen::VectorXd rvec;
@@ -126,7 +127,7 @@ template<int OPT> void Rmatinv<OPT>::reinitialise()
 		}
 	}
 	//terminal nodes pressure = -vector in
-	for(size_t k = tree->get_first_term_index(); k < tree->count_nodes(); k++)
+	for(size_t k = this->tree->get_first_term_index(); k < this->tree->count_nodes(); k++)
 	{
 		A_fill.push_back(Eigen::Triplet<double>(int(this->tree->count_edges() + k), int(this->tree->count_edges() + k), -1.0));
 	}

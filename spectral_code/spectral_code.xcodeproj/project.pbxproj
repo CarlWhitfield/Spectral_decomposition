@@ -1,0 +1,359 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		975A1A1F2555327000035A4E /* define_spectral_options.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 975A1A182555327000035A4E /* define_spectral_options.cpp */; };
+		975A1A202555327000035A4E /* spectral_operations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 975A1A192555327000035A4E /* spectral_operations.cpp */; };
+		975A1A212555327000035A4E /* define_spectral_params.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 975A1A1B2555327000035A4E /* define_spectral_params.cpp */; };
+		975A1A222555327000035A4E /* r_matrices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 975A1A1C2555327000035A4E /* r_matrices.cpp */; };
+		975A1A232555327000035A4E /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 975A1A1E2555327000035A4E /* main.cpp */; };
+		9777D96B255A936400C7EE0E /* libboost_filesystem.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9777D96A255A936400C7EE0E /* libboost_filesystem.dylib */; };
+		9777D96E255AA0E300C7EE0E /* libboost_system.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9777D96C255A936B00C7EE0E /* libboost_system.dylib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		975A1A072555324400035A4E /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		975A1A092555324400035A4E /* spectral_code */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = spectral_code; sourceTree = BUILT_PRODUCTS_DIR; };
+		975A1A132555327000035A4E /* r_matrices.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = r_matrices.h; path = ../../Spectral_decomposition/r_matrices.h; sourceTree = "<group>"; };
+		975A1A142555327000035A4E /* spectral_option_defaults.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = spectral_option_defaults.h; path = ../../Spectral_decomposition/spectral_option_defaults.h; sourceTree = "<group>"; };
+		975A1A152555327000035A4E /* define_spectral_codes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = define_spectral_codes.h; path = ../../Spectral_decomposition/define_spectral_codes.h; sourceTree = "<group>"; };
+		975A1A162555327000035A4E /* define_spectral_options.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = define_spectral_options.h; path = ../../Spectral_decomposition/define_spectral_options.h; sourceTree = "<group>"; };
+		975A1A172555327000035A4E /* define_spectral_params.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = define_spectral_params.h; path = ../../Spectral_decomposition/define_spectral_params.h; sourceTree = "<group>"; };
+		975A1A182555327000035A4E /* define_spectral_options.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = define_spectral_options.cpp; path = ../../Spectral_decomposition/define_spectral_options.cpp; sourceTree = "<group>"; };
+		975A1A192555327000035A4E /* spectral_operations.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = spectral_operations.cpp; path = ../../Spectral_decomposition/spectral_operations.cpp; sourceTree = "<group>"; };
+		975A1A1A2555327000035A4E /* spectral_operations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = spectral_operations.h; path = ../../Spectral_decomposition/spectral_operations.h; sourceTree = "<group>"; };
+		975A1A1B2555327000035A4E /* define_spectral_params.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = define_spectral_params.cpp; path = ../../Spectral_decomposition/define_spectral_params.cpp; sourceTree = "<group>"; };
+		975A1A1C2555327000035A4E /* r_matrices.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = r_matrices.cpp; path = ../../Spectral_decomposition/r_matrices.cpp; sourceTree = "<group>"; };
+		975A1A1D2555327000035A4E /* spectral_param_defaults.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = spectral_param_defaults.h; path = ../../Spectral_decomposition/spectral_param_defaults.h; sourceTree = "<group>"; };
+		975A1A1E2555327000035A4E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = ../../Spectral_decomposition/main.cpp; sourceTree = "<group>"; };
+		9777D968255A935D00C7EE0E /* libboost_filesystem-mt.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libboost_filesystem-mt.dylib"; path = "../../../../../../usr/local/Cellar/boost/1.60.0_2/lib/libboost_filesystem-mt.dylib"; sourceTree = "<group>"; };
+		9777D96A255A936400C7EE0E /* libboost_filesystem.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libboost_filesystem.dylib; path = ../../../../../../usr/local/Cellar/boost/1.60.0_2/lib/libboost_filesystem.dylib; sourceTree = "<group>"; };
+		9777D96C255A936B00C7EE0E /* libboost_system.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libboost_system.dylib; path = ../../../../../../usr/local/Cellar/boost/1.60.0_2/lib/libboost_system.dylib; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		975A1A062555324400035A4E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9777D96B255A936400C7EE0E /* libboost_filesystem.dylib in Frameworks */,
+				9777D96E255AA0E300C7EE0E /* libboost_system.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		975A1A002555324400035A4E = {
+			isa = PBXGroup;
+			children = (
+				975A1A0B2555324400035A4E /* spectral_code */,
+				975A1A0A2555324400035A4E /* Products */,
+				9777D967255A935D00C7EE0E /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		975A1A0A2555324400035A4E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				975A1A092555324400035A4E /* spectral_code */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		975A1A0B2555324400035A4E /* spectral_code */ = {
+			isa = PBXGroup;
+			children = (
+				975A1A152555327000035A4E /* define_spectral_codes.h */,
+				975A1A182555327000035A4E /* define_spectral_options.cpp */,
+				975A1A162555327000035A4E /* define_spectral_options.h */,
+				975A1A1B2555327000035A4E /* define_spectral_params.cpp */,
+				975A1A172555327000035A4E /* define_spectral_params.h */,
+				975A1A1E2555327000035A4E /* main.cpp */,
+				975A1A1C2555327000035A4E /* r_matrices.cpp */,
+				975A1A132555327000035A4E /* r_matrices.h */,
+				975A1A192555327000035A4E /* spectral_operations.cpp */,
+				975A1A1A2555327000035A4E /* spectral_operations.h */,
+				975A1A142555327000035A4E /* spectral_option_defaults.h */,
+				975A1A1D2555327000035A4E /* spectral_param_defaults.h */,
+			);
+			path = spectral_code;
+			sourceTree = "<group>";
+		};
+		9777D967255A935D00C7EE0E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9777D96C255A936B00C7EE0E /* libboost_system.dylib */,
+				9777D96A255A936400C7EE0E /* libboost_filesystem.dylib */,
+				9777D968255A935D00C7EE0E /* libboost_filesystem-mt.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		975A1A082555324400035A4E /* spectral_code */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 975A1A102555324400035A4E /* Build configuration list for PBXNativeTarget "spectral_code" */;
+			buildPhases = (
+				975A1A052555324400035A4E /* Sources */,
+				975A1A062555324400035A4E /* Frameworks */,
+				975A1A072555324400035A4E /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = spectral_code;
+			productName = spectral_code;
+			productReference = 975A1A092555324400035A4E /* spectral_code */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		975A1A012555324400035A4E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1010;
+				ORGANIZATIONNAME = "Carl Whitfield";
+				TargetAttributes = {
+					975A1A082555324400035A4E = {
+						CreatedOnToolsVersion = 10.1;
+					};
+				};
+			};
+			buildConfigurationList = 975A1A042555324400035A4E /* Build configuration list for PBXProject "spectral_code" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 975A1A002555324400035A4E;
+			productRefGroup = 975A1A0A2555324400035A4E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				975A1A082555324400035A4E /* spectral_code */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		975A1A052555324400035A4E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				975A1A232555327000035A4E /* main.cpp in Sources */,
+				975A1A222555327000035A4E /* r_matrices.cpp in Sources */,
+				975A1A212555327000035A4E /* define_spectral_params.cpp in Sources */,
+				975A1A1F2555327000035A4E /* define_spectral_options.cpp in Sources */,
+				975A1A202555327000035A4E /* spectral_operations.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		975A1A0E2555324400035A4E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		975A1A0F2555324400035A4E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		975A1A112555324400035A4E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = /usr/local/Cellar/boost/1.60.0_2/lib;
+				GCC_INPUT_FILETYPE = sourcecode.cpp.cpp;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_VERSION = "";
+				HEADER_SEARCH_PATHS = (
+					"/Users/carlwhitfield/Documents/Github/Tube-network-headers",
+					"/Users/carlwhitfield/Documents/eigen-3.3.8",
+					"/Users/carlwhitfield/Documents/spectra-0.8.1/include",
+					/usr/local/Cellar/boost/1.60.0_2/include,
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/Cellar/boost/1.60.0_2/lib;
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "-v";
+			};
+			name = Debug;
+		};
+		975A1A122555324400035A4E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = /usr/local/Cellar/boost/1.60.0_2/lib;
+				GCC_INPUT_FILETYPE = sourcecode.cpp.cpp;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_VERSION = "";
+				HEADER_SEARCH_PATHS = (
+					"/Users/carlwhitfield/Documents/Github/Tube-network-headers",
+					"/Users/carlwhitfield/Documents/eigen-3.3.8",
+					"/Users/carlwhitfield/Documents/spectra-0.8.1/include",
+					/usr/local/Cellar/boost/1.60.0_2/include,
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/Cellar/boost/1.60.0_2/lib;
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				"OTHER_CFLAGS[arch=*]" = "";
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "-v";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		975A1A042555324400035A4E /* Build configuration list for PBXProject "spectral_code" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				975A1A0E2555324400035A4E /* Debug */,
+				975A1A0F2555324400035A4E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		975A1A102555324400035A4E /* Build configuration list for PBXNativeTarget "spectral_code" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				975A1A112555324400035A4E /* Debug */,
+				975A1A122555324400035A4E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 975A1A012555324400035A4E /* Project object */;
+}

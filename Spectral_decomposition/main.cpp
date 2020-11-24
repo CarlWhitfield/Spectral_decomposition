@@ -3,8 +3,9 @@
 #include"define_spectral_options.h"
 #include"define_spectral_params.h"
 
+
 //function to read options and param lists
-void read_options(const int &argc, char** argv, SpectralOptionList* o, SpectralParameterList *p)  //constructs lung simulation from command line args
+void read_options(const int &argc, char** argv, sgt::SpectralOptionList* o, sgt::SpectralParameterList *p)  //constructs lung simulation from command line args
 {
 	//5 possible arguments in total, all filenames, sort by extensions
 	std::vector<std::string> extensions;
@@ -15,18 +16,21 @@ void read_options(const int &argc, char** argv, SpectralOptionList* o, SpectralP
 	extensions[3] = TERM_NODE_FILE_EXT;
 	extensions[4] = BRANCH_FILE_EXT;
 
+	std:: cout << "Getting filenames.\n";
 	o->get_filenames_from_args(extensions, argc, argv);
+	std:: cout << "Reading options.\n";
 	if( o->filename_exists(OPTIONS_FILE_EXT) ) o->read_file(o->get_filename(OPTIONS_FILE_EXT));  //if options file given, read it in
+	std:: cout << "Reading params.\n";
 	if( o->filename_exists(PARAMS_FILE_EXT) ) p->read_file(o->get_filename(PARAMS_FILE_EXT));  //if options file given, read it in
 	p->check_and_convert(o);  //run checks and conversions here
 }
 
 //setup network and return shared pointer
-std::shared_ptr<SpectralNetwork<>> setup_tree(SpectralOptionList* o, SpectralParameterList* p)
+std::shared_ptr<SpectralNetwork<>> setup_tree(sgt::SpectralOptionList* o, sgt::SpectralParameterList* p)
 {
 	int tree_type;
 	std::shared_ptr<SpectralNetwork<>> tree;
-	switch(o->get_option<char>(EDGE_WEIGHT_KEY)->get_value())
+	switch(o->get_option_value<char>(EDGE_WEIGHT_KEY))
 	{
 	case RESISTANCE_WEIGHTING:
 		{
@@ -45,7 +49,7 @@ std::shared_ptr<SpectralNetwork<>> setup_tree(SpectralOptionList* o, SpectralPar
 	}
 	
 
-	switch(o->get_option<char>(TREE_KEY)->get_value())  //type of tree
+	switch(o->get_option_value<char>(TREE_KEY))  //type of tree
 	{
 	case MODEL_FROM_FILE:
 		{
@@ -56,23 +60,23 @@ std::shared_ptr<SpectralNetwork<>> setup_tree(SpectralOptionList* o, SpectralPar
 	case ASYMM_MODEL:
 		{
 			tree = std::shared_ptr<SpectralNetwork<>>(new SpectralNetwork<>(
-				                                       size_t(p->get_param<int>(N_GENERATIONS_KEY)->get_value()),
-						                               p->get_param<double>(SEED_RADIUS_KEY)->get_value(), 
-						                               p->get_param<double>(SEED_LENGTH_KEY)->get_value(),
-						                               p->get_param<double>(SCALE_FACTOR_KEY)->get_value(), 
-						                               p->get_param<double>(ASYMMETRY_KEY)->get_value(),
+				                                       size_t(p->get_param_value<int>(N_GENERATIONS_KEY)),
+						                               p->get_param_value<double>(SEED_RADIUS_KEY),
+						                               p->get_param_value<double>(SEED_LENGTH_KEY),
+						                               p->get_param_value<double>(SCALE_FACTOR_KEY),
+						                               p->get_param_value<double>(ASYMMETRY_KEY),
 						                               tree_type));
 		} break;
 
 	case PERT_MODEL:
 		{
 			tree = std::shared_ptr<SpectralNetwork<>>(new SpectralNetwork<>(
-				                                       size_t(p->get_param<int>(N_GENERATIONS_KEY)->get_value()),
-						                               p->get_param<double>(SEED_RADIUS_KEY)->get_value(), 
-						                               p->get_param<double>(SEED_LENGTH_KEY)->get_value(),
-						                               p->get_param<double>(SCALE_FACTOR_KEY)->get_value(), 
-						                               0.0, p->get_param<double>(PERTURBATION_FRACTION_KEY)->get_value(),
-						                               size_t(p->get_param<int>(PERTURBATION_GEN_KEY)->get_value()),
+				                                       size_t(p->get_param_value<int>(N_GENERATIONS_KEY)),
+						                               p->get_param_value<double>(SEED_RADIUS_KEY),
+						                               p->get_param_value<double>(SEED_LENGTH_KEY),
+						                               p->get_param_value<double>(SCALE_FACTOR_KEY),
+						                               0.0, p->get_param_value<double>(PERTURBATION_FRACTION_KEY),
+						                               size_t(p->get_param_value<int>(PERTURBATION_GEN_KEY)),
 						                               tree_type));
 		} break;
 
@@ -87,10 +91,10 @@ std::shared_ptr<SpectralNetwork<>> setup_tree(SpectralOptionList* o, SpectralPar
 }
 
 //functions to calculate and print spectrum
-int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, SpectralOptionList *o, SpectralParameterList *p)
+int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, sgt::SpectralOptionList *o, sgt::SpectralParameterList *p)
 {
 	std::cout << "Computing Laplacian Spectrum...\n";
-	switch(o->get_option<char>(CUTOFF_MODE_KEY)->get_value())
+	switch(o->get_option_value<char>(CUTOFF_MODE_KEY))
 	{
 	case NO_CUTOFF:
 		{
@@ -99,14 +103,14 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 
 	case FRAC_CUTOFF:
 		{
-			double frac = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
+			double frac = p->get_param_value<double>(CUTOFF_POINT_KEY);
 			if(frac == 1)   //equivalent to computing full spectrum
 			{
 				tree->compute_full_graph_laplacian_spectrum();
 			}
 			else
 			{
-				if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+				if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 				{
 					int Nlarge = std::max(int(1),int(frac*tree->count_nodes()));
 					tree->compute_partial_graph_laplacian_spectrum(0,Nlarge);
@@ -121,8 +125,8 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 
 	case VALUE_CUTOFF:
 		{
-			double scaled_value = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
-			if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+			double scaled_value = p->get_param_value<double>(CUTOFF_POINT_KEY);
+			if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 			{
 				tree->compute_all_graph_laplacian_modes_above_cutoff(scaled_value);
 			}
@@ -144,22 +148,22 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 	std::stringstream ss;
 	ss << filehead << "_summary.csv";
 	tree->print_graph_laplacian_modes_summary_csv(ss.str());
-	if(o->get_option<bool>(PRINT_VTKS)->get_value() || o->get_option<bool>(PRINT_CSVS)->get_value())  //print out modes in vtk file
+	if(o->get_option_value<bool>(PRINT_VTKS) || o->get_option_value<bool>(PRINT_CSVS))  //print out modes in vtk file
 	{
 		//continue here
-		int Nprint = p->get_param<int>(N_PRINT_KEY)->get_value();
+		int Nprint = p->get_param_value<int>(N_PRINT_KEY);
 		ss.clear();
 		ss.str("");
-		switch(o->get_option<char>(OUTPUT_SORT_KEY)->get_value())
+		switch(o->get_option_value<char>(OUTPUT_SORT_KEY))
 		{
 		case PRINT_DOMINANT_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_graph_laplacian_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_graph_laplacian_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -169,11 +173,11 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 		case PRINT_LARGEST_MODES:
 			{
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_graph_laplacian_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_graph_laplacian_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -183,11 +187,11 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 		case PRINT_SMALLEST_MODES:
 			{
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_graph_laplacian_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_graph_laplacian_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -197,11 +201,11 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 		case PRINT_ALL_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_graph_laplacian_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_graph_laplacian_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -209,11 +213,11 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_graph_laplacian_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_graph_laplacian_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -222,11 +226,11 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_graph_laplacian_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_graph_laplacian_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -237,10 +241,10 @@ int compute_and_print_graph_laplacian_spectrum(SpectralNetwork<> *tree, Spectral
 	return 0;
 }
 
-int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, SpectralOptionList *o, SpectralParameterList *p)
+int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, sgt::SpectralOptionList *o, sgt::SpectralParameterList *p)
 {
 	std::cout << "Computing Truncated  Laplacian Spectrum...\n";
-	switch(o->get_option<char>(CUTOFF_MODE_KEY)->get_value())
+	switch(o->get_option_value<char>(CUTOFF_MODE_KEY))
 	{
 	case NO_CUTOFF:
 		{
@@ -249,14 +253,14 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 
 	case FRAC_CUTOFF:
 		{
-			double frac = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
+			double frac = p->get_param_value<double>(CUTOFF_POINT_KEY);
 			if(frac == 1)   //equivalent to computing full spectrum
 			{
 				tree->compute_full_truncated_laplacian_spectrum();
 			}
 			else
 			{
-				if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+				if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 				{
 					int Nlarge = std::max(int(1),int(frac*(tree->count_nodes() - tree->count_term_nodes() + 1)));
 					tree->compute_partial_truncated_laplacian_spectrum(0,Nlarge);
@@ -271,8 +275,8 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 
 	case VALUE_CUTOFF:
 		{
-			double scaled_value = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
-			if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+			double scaled_value = p->get_param_value<double>(CUTOFF_POINT_KEY);
+			if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 			{
 				tree->compute_all_truncated_laplacian_modes_above_cutoff(scaled_value);
 			}
@@ -294,22 +298,22 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 	std::stringstream ss;
 	ss << filehead << "_summary.csv";
 	tree->print_truncated_laplacian_modes_summary_csv(ss.str());
-	if(o->get_option<bool>(PRINT_VTKS)->get_value() || o->get_option<bool>(PRINT_CSVS)->get_value())  //print out modes in vtk file
+	if(o->get_option_value<bool>(PRINT_VTKS) || o->get_option_value<bool>(PRINT_CSVS))  //print out modes in vtk file
 	{
 		//continue here
-		int Nprint = p->get_param<int>(N_PRINT_KEY)->get_value();
+		int Nprint = p->get_param_value<int>(N_PRINT_KEY);
 		ss.clear();
 		ss.str("");
-		switch(o->get_option<char>(OUTPUT_SORT_KEY)->get_value())
+		switch(o->get_option_value<char>(OUTPUT_SORT_KEY))
 		{
 		case PRINT_DOMINANT_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_truncated_laplacian_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_truncated_laplacian_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -319,11 +323,11 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 		case PRINT_LARGEST_MODES:
 			{
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_truncated_laplacian_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_truncated_laplacian_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -334,11 +338,11 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 		case PRINT_SMALLEST_MODES:
 			{
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_truncated_laplacian_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_truncated_laplacian_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -348,11 +352,11 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 		case PRINT_ALL_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_truncated_laplacian_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_truncated_laplacian_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -361,11 +365,11 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_truncated_laplacian_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_truncated_laplacian_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -374,11 +378,11 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_truncated_laplacian_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_truncated_laplacian_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -389,10 +393,10 @@ int compute_and_print_truncated_laplacian_spectrum(SpectralNetwork<> *tree, Spec
 	return 0;
 }
 
-int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, SpectralOptionList *o, SpectralParameterList *p)
+int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, sgt::SpectralOptionList *o, sgt::SpectralParameterList *p)
 {
 	std::cout << "Computing Modified Laplacian Spectrum...\n";
-	switch(o->get_option<char>(CUTOFF_MODE_KEY)->get_value())
+	switch(o->get_option_value<char>(CUTOFF_MODE_KEY))
 	{
 	case NO_CUTOFF:
 		{
@@ -401,14 +405,14 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 
 	case FRAC_CUTOFF:
 		{
-			double frac = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
+			double frac = p->get_param_value<double>(CUTOFF_POINT_KEY);
 			if(frac == 1)   //equivalent to computing full spectrum
 			{
 				tree->compute_full_modified_laplacian_spectrum();
 			}
 			else
 			{
-				if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+				if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 				{
 					int Nlarge = std::max(int(1),int(frac*(tree->count_nodes() - tree->count_term_nodes() - 1)));
 					tree->compute_partial_modified_laplacian_spectrum(0,Nlarge);
@@ -423,8 +427,8 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 
 	case VALUE_CUTOFF:
 		{
-			double scaled_value = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
-			if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+			double scaled_value = p->get_param_value<double>(CUTOFF_POINT_KEY);
+			if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 			{
 				tree->compute_all_modified_laplacian_modes_above_cutoff(scaled_value);
 			}
@@ -446,22 +450,22 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 	std::stringstream ss;
 	ss << filehead << "_summary.csv";
 	tree->print_modified_laplacian_modes_summary_csv(ss.str());
-	if(o->get_option<bool>(PRINT_VTKS)->get_value() || o->get_option<bool>(PRINT_CSVS)->get_value())  //print out modes in vtk file
+	if(o->get_option_value<bool>(PRINT_VTKS) || o->get_option_value<bool>(PRINT_CSVS))  //print out modes in vtk file
 	{
 		//continue here
-		int Nprint = p->get_param<int>(N_PRINT_KEY)->get_value();
+		int Nprint = p->get_param_value<int>(N_PRINT_KEY);
 		ss.clear();
 		ss.str("");
-		switch(o->get_option<char>(OUTPUT_SORT_KEY)->get_value())
+		switch(o->get_option_value<char>(OUTPUT_SORT_KEY))
 		{
 		case PRINT_DOMINANT_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{;
 					tree->print_modified_laplacian_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_modified_laplacian_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -471,11 +475,11 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 		case PRINT_LARGEST_MODES:
 			{
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_modified_laplacian_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_modified_laplacian_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -485,11 +489,11 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 		case PRINT_SMALLEST_MODES:
 			{
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_modified_laplacian_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_modified_laplacian_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -499,11 +503,11 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 		case PRINT_ALL_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_modified_laplacian_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_modified_laplacian_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -511,11 +515,11 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_modified_laplacian_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_modified_laplacian_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -523,11 +527,11 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_modified_laplacian_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_modified_laplacian_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -538,10 +542,10 @@ int compute_and_print_modified_laplacian_spectrum(SpectralNetwork<> *tree, Spect
 	return 0;
 }
 
-int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList *o, SpectralParameterList *p)
+int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, sgt::SpectralOptionList *o, sgt::SpectralParameterList *p)
 {
 	std::cout << "Computing Maury Spectrum...\n";
-	switch(o->get_option<char>(CUTOFF_MODE_KEY)->get_value())
+	switch(o->get_option_value<char>(CUTOFF_MODE_KEY))
 	{
 	case NO_CUTOFF:
 		{
@@ -550,14 +554,14 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 
 	case FRAC_CUTOFF:
 		{
-			double frac = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
+			double frac = p->get_param_value<double>(CUTOFF_POINT_KEY);
 			if(frac == 1)   //equivalent to computing full spectrum
 			{
 				tree->compute_full_maury_spectrum();
 			}
 			else
 			{
-				if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+				if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 				{
 					int Nlarge = std::max(int(1),int(frac*tree->count_term_nodes()));
 					tree->compute_partial_maury_spectrum(0,Nlarge);
@@ -572,9 +576,9 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 
 	case VALUE_CUTOFF:
 		{
-			double scaled_value = p->get_param<double>(CUTOFF_POINT_KEY)->get_value()
+			double scaled_value = p->get_param_value<double>(CUTOFF_POINT_KEY)
 				                * tree->count_term_nodes() / tree->get_maury_scale_factor();    //for maury matrix, value cutoff is scaled by number of term nodes
-			if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+			if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 			{
 				tree->compute_all_maury_modes_above_cutoff(scaled_value);
 			}
@@ -596,21 +600,21 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 	std::stringstream ss;
 	ss << filehead << "_summary.csv";
 	tree->print_maury_modes_summary_csv(ss.str());
-	if(o->get_option<bool>(PRINT_VTKS)->get_value() || o->get_option<bool>(PRINT_CSVS)->get_value())  //print out modes in vtk file
+	if(o->get_option_value<bool>(PRINT_VTKS) || o->get_option_value<bool>(PRINT_CSVS))  //print out modes in vtk file
 	{
-		int Nprint = p->get_param<int>(N_PRINT_KEY)->get_value();
+		int Nprint = p->get_param_value<int>(N_PRINT_KEY);
 		ss.clear();
 		ss.str("");
-		switch(o->get_option<char>(OUTPUT_SORT_KEY)->get_value())
+		switch(o->get_option_value<char>(OUTPUT_SORT_KEY))
 		{
 		case PRINT_DOMINANT_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_maury_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_maury_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -620,11 +624,11 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 		case PRINT_LARGEST_MODES:
 			{
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_maury_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_maury_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -634,11 +638,11 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 		case PRINT_SMALLEST_MODES:
 			{
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_maury_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_maury_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -648,11 +652,11 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 		case PRINT_ALL_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_maury_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_maury_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -660,11 +664,11 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_maury_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_maury_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -672,11 +676,11 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_maury_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_maury_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -687,10 +691,11 @@ int compute_and_print_maury_spectrum(SpectralNetwork<> *tree, SpectralOptionList
 	return 0;
 }
 
-int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOptionList *o, SpectralParameterList *p)
+int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, sgt::SpectralOptionList *o,
+										 sgt::SpectralParameterList *p)
 {
 	std::cout << "Computing Adjacency Spectrum...\n";
-	switch(o->get_option<char>(CUTOFF_MODE_KEY)->get_value())
+	switch(o->get_option_value<char>(CUTOFF_MODE_KEY))
 	{
 	case NO_CUTOFF:
 		{
@@ -699,14 +704,14 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 
 	case FRAC_CUTOFF:
 		{
-			double frac = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
+			double frac = p->get_param_value<double>(CUTOFF_POINT_KEY);
 			if(frac == 1)   //equivalent to computing full spectrum
 			{
 				tree->compute_full_adjacency_spectrum();
 			}
 			else
 			{
-				if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+				if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 				{
 					int Nlarge = std::max(int(1),int(frac*(tree->count_nodes())));
 					tree->compute_partial_adjacency_spectrum(0,Nlarge);
@@ -721,8 +726,8 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 
 	case VALUE_CUTOFF:
 		{
-			double scaled_value = p->get_param<double>(CUTOFF_POINT_KEY)->get_value();
-			if(o->get_option<char>(ORDER_KEY)->get_value() == LARGEST_MODES)
+			double scaled_value = p->get_param_value<double>(CUTOFF_POINT_KEY);
+			if(o->get_option_value<char>(ORDER_KEY) == LARGEST_MODES)
 			{
 				tree->compute_all_adjacency_modes_above_cutoff(scaled_value);
 			}
@@ -744,21 +749,21 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 	std::stringstream ss;
 	ss << filehead << "_summary.csv";
 	tree->print_adjacency_modes_summary_csv(ss.str());
-	if(o->get_option<bool>(PRINT_VTKS)->get_value() || o->get_option<bool>(PRINT_CSVS)->get_value())  //print out modes in vtk file
+	if(o->get_option_value<bool>(PRINT_VTKS) || o->get_option_value<bool>(PRINT_CSVS))  //print out modes in vtk file
 	{
-		int Nprint = p->get_param<int>(N_PRINT_KEY)->get_value();
+		int Nprint = p->get_param_value<int>(N_PRINT_KEY);
 		ss.clear();
 		ss.str("");
-		switch(o->get_option<char>(OUTPUT_SORT_KEY)->get_value())
+		switch(o->get_option_value<char>(OUTPUT_SORT_KEY))
 		{
 		case PRINT_DOMINANT_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_adjacency_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_adjacency_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -768,11 +773,11 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 		case PRINT_LARGEST_MODES:
 			{
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_adjacency_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_adjacency_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -782,11 +787,11 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 		case PRINT_SMALLEST_MODES:
 			{
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_adjacency_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_adjacency_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -796,11 +801,11 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 		case PRINT_ALL_MODES:
 			{
 				ss << filehead << "_dominant";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_adjacency_evectors_vtk(ss.str(), Nprint, DOMINANT_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_adjacency_evectors_csv(ss.str(), Nprint, DOMINANT_SORT);
@@ -808,11 +813,11 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_largest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_adjacency_evectors_vtk(ss.str(), Nprint, LARGEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_adjacency_evectors_csv(ss.str(), Nprint, LARGEST_SORT);
@@ -820,11 +825,11 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 				ss.clear();
 				ss.str("");
 				ss << filehead << "_smallest";
-				if(o->get_option<bool>(PRINT_VTKS)->get_value())
+				if(o->get_option_value<bool>(PRINT_VTKS))
 				{
 					tree->print_adjacency_evectors_vtk(ss.str(), Nprint, SMALLEST_SORT);
 				}
-				if(o->get_option<bool>(PRINT_CSVS)->get_value())
+				if(o->get_option_value<bool>(PRINT_CSVS))
 				{
 					ss << ".csv";
 					tree->print_adjacency_evectors_csv(ss.str(), Nprint, SMALLEST_SORT);
@@ -836,9 +841,9 @@ int compute_and_print_adjacency_spectrum(SpectralNetwork<> *tree, SpectralOption
 }
 
 int main(int argc, char * argv[])
-{
-	std::shared_ptr<SpectralOptionList> options = std::make_shared<SpectralOptionList>();
-	std::shared_ptr<SpectralParameterList> params = std::make_shared<SpectralParameterList>();
+{	
+	std::shared_ptr<sgt::SpectralOptionList> options = std::make_shared<sgt::SpectralOptionList>();
+	std::shared_ptr<sgt::SpectralParameterList> params = std::make_shared<sgt::SpectralParameterList>();
 
 	read_options(argc, argv, options.get(), params.get());
 	
@@ -848,7 +853,7 @@ int main(int argc, char * argv[])
 	std::shared_ptr<SpectralNetwork<>> tree = setup_tree(options.get(), params.get());
 
 	//choose operator to compute
-	switch(options->get_option<char>(OPERATOR_KEY)->get_value())
+	switch(options->get_option_value<char>(OPERATOR_KEY))
 	{
 	case MAURY:
 		{

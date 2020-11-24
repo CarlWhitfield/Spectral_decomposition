@@ -6,13 +6,16 @@
 #include "define_spectral_codes.h"
 #include <string>
 
-class SpectralOptionList: public inlist::OptionList<char,bool>
+namespace sgt
 {
-public:
-	SpectralOptionList();
+	class SpectralOptionList: public inlist::OptionList<char,bool>
+	{
+	public:
+		SpectralOptionList();
 
-	std::string generate_output_name() const;
-};
+		std::string generate_output_name() const;
+	};
+}
 
 
 #endif

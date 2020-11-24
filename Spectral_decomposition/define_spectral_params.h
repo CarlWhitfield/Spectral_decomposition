@@ -6,11 +6,14 @@
 #include "spectral_param_defaults.h"
 #include <string>
 
-class SpectralParameterList: public inlist::ParameterList<int, double>
+namespace sgt
 {
-public:
-	SpectralParameterList();   //constructor for spectral calc
-	void check_and_convert(SpectralOptionList *o);
-};
+	class SpectralParameterList: public inlist::ParameterList<int, double>
+	{
+	public:
+		SpectralParameterList();   //constructor for spectral calc
+		void check_and_convert(SpectralOptionList *o);
+	};
+}
 
 #endif
